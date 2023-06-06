@@ -11,8 +11,41 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+    <PackageReference Include="Nullable" Version="1.3.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="Nullable" Version="1.3.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="Nullable" Version="1.3.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
+    <PackageReference Include="Nullable" Version="1.3.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
     <Using Remove="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Rem.Core.Utilities.Enums" Version="1.1.0" />
+    <PackageReference Include="Rem.Core.Numerics.Digits" Version="1.1.3" />
+    <PackageReference Include="Rem.Core.Numerics.FloatingPointComponents" Version="1.0.1" />
+    <PackageReference Include="Rem.Core.Collections" Version="1.2.0" />
   </ItemGroup>
 
 </Project>
