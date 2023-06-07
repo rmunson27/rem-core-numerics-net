@@ -1,0 +1,69 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".g.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+// Compiler-generated
+namespace Rem.Core.Numerics.Test;
+
+#nullable enable
+<#
+    (string TargetTypeName, string StaticClassName)[] testClasses = new[]
+    {
+        ("double", "Doubles"),
+        ("float", "Floats"),
+        ("Half", "Halfs"),
+    };
+
+    foreach (var (targetTypeName, staticClassName) in testClasses)
+    {
+#>
+
+/// <summary>
+/// Tests the <see cref="<#=staticClassName#>"/> class functionality.
+/// </summary>
+[TestClass]
+public class <#=staticClassName#>Test
+{
+    private static readonly <#=targetTypeName#> NegativeOne = (<#=targetTypeName#>)(-1);
+    private static readonly <#=targetTypeName#> Zero = (<#=targetTypeName#>)0;
+    private static readonly <#=targetTypeName#> One = (<#=targetTypeName#>)1;
+
+    private static readonly <#=targetTypeName#> PositiveInfinity = <#=targetTypeName#>.PositiveInfinity;
+    private static readonly <#=targetTypeName#> NegativeInfinity = <#=targetTypeName#>.NegativeInfinity;
+    private static readonly <#=targetTypeName#> NaN = <#=targetTypeName#>.NaN;
+
+    /// <summary>
+    /// Tests the <see cref="<#=staticClassName#>.IsFinite"/> method.
+    /// </summary>
+    [TestMethod]
+    public void TestIsFinite()
+    {
+        Assert.IsTrue(<#=staticClassName#>.IsFinite(NegativeOne));
+        Assert.IsTrue(<#=staticClassName#>.IsFinite(Zero));
+        Assert.IsTrue(<#=staticClassName#>.IsFinite(One));
+
+        Assert.IsFalse(<#=staticClassName#>.IsFinite(NegativeInfinity));
+        Assert.IsFalse(<#=staticClassName#>.IsFinite(NaN));
+        Assert.IsFalse(<#=staticClassName#>.IsFinite(PositiveInfinity));
+    }
+
+    /// <summary>
+    /// Tests the <see cref="<#=staticClassName#>.IsNonFinite"/> method.
+    /// </summary>
+    [TestMethod]
+    public void TestIsNonFinite()
+    {
+        Assert.IsFalse(<#=staticClassName#>.IsNonFinite(NegativeOne));
+        Assert.IsFalse(<#=staticClassName#>.IsNonFinite(Zero));
+        Assert.IsFalse(<#=staticClassName#>.IsNonFinite(One));
+
+        Assert.IsTrue(<#=staticClassName#>.IsNonFinite(NegativeInfinity));
+        Assert.IsTrue(<#=staticClassName#>.IsNonFinite(NaN));
+        Assert.IsTrue(<#=staticClassName#>.IsNonFinite(PositiveInfinity));
+    }
+}
+<#
+    }
+#>

@@ -1,0 +1,119 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".g.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Runtime" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Runtime.CompilerServices" #>
+// Compiler-generated
+using System;
+using System.Runtime.CompilerServices;
+
+namespace Rem.Core.Numerics;
+
+#nullable enable
+<#
+    // Create a list of the static classes to create
+    (string TargetTypeName,
+     string StaticClassName,
+     string ConjunctionTypeName,
+     string? ToConjunctionBitConverterMethodName,
+     bool RequireDotNet6)[] definitions = new[]
+    {
+        ("double", "Doubles", "long", "DoubleToInt64Bits", false), // Doubles
+        ("float", "Floats", "int", null, false),                   // Floats
+        ("Half", "Halfs", "int", "HalfToInt16Bits", true),         // Halfs (only .NET 6+)
+    };
+
+    foreach (var (targetTypeName,
+                  staticClassName,
+                  conjunctionTypeName,
+                  toConjunctionBitConverterMethodName,
+                  requireDotNet6) in definitions)
+    {
+        var usesBitConverter = toConjunctionBitConverterMethodName is string;
+        var conversionFunction = toConjunctionBitConverterMethodName is string bcMethodName
+                                    ? $"{nameof(BitConverter)}.{bcMethodName}"
+                                    : $"{nameof(Unsafe)}.{nameof(Unsafe.As)}<{targetTypeName}, {conjunctionTypeName}>";
+
+        string conversionParameter(string paramName) => usesBitConverter
+                                                            ? paramName
+                                                            : $"ref {paramName}"; // Need the unsafe method
+        if (requireDotNet6)
+        {
+#>
+
+#if NET6_0_OR_GREATER
+<#
+        }
+        else
+        {
+#>
+
+<#
+        }
+#>
+/// <summary>
+/// Contains helper functionality for working with <see cref="<#= targetTypeName#>"/> values.
+/// </summary>
+public static class <#=staticClassName#>
+{
+    /// <summary>
+    /// The bits of the <see cref="<#=targetTypeName#>.PositiveInfinity"/> value typed as a
+    /// <see cref="<#=conjunctionTypeName#>"/>.
+    /// </summary>
+    /// <remarks>
+    /// If the bitwise conjunction (&) of this value and a <see cref="<#=conjunctionTypeName#>"/> bitwise equivalent
+    /// to another <see cref="<#=targetTypeName#>"/> is equal to this value, then the other
+    /// <see cref="<#=targetTypeName#>"/> is not a finite number.
+    /// </remarks>
+    private static readonly <#=conjunctionTypeName#> InfinityFlags<#if (usesBitConverter) {#> = <#=conversionFunction#>(<#=targetTypeName#>.PositiveInfinity)<#}#>;
+
+<#
+        if (!usesBitConverter)
+        {
+#>
+    static <#=staticClassName#>()
+    {
+        var infinity = <#=targetTypeName#>.PositiveInfinity;
+        InfinityFlags = Unsafe.As<<#=targetTypeName#>, <#=conjunctionTypeName#>>(ref infinity);
+    }
+
+<#
+        }
+#>
+    /// <summary>
+    /// Determines if the given <see cref="<#=targetTypeName#>"/> is a finite number.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static bool IsFinite(<#=targetTypeName#> value) => value.InfinityDeterminant() != InfinityFlags;
+
+    /// <summary>
+    /// Determines if the given <see cref="<#=targetTypeName#>"/> is a non-finite number.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static bool IsNonFinite(<#=targetTypeName#> value) => value.InfinityDeterminant() == InfinityFlags;
+
+    /// <summary>
+    /// Gets a <see cref="<#=conjunctionTypeName#>"/> representing a set of flags that can be compared with
+    /// <see cref="InfinityFlags"/> to determine if the given <see cref="<#=targetTypeName#>"/> is infinite.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static <#=conjunctionTypeName#> InfinityDeterminant(this <#=targetTypeName#> value)
+        => <#=conversionFunction#>(<#=conversionParameter("value")#>) & InfinityFlags;
+}
+<#
+        if (requireDotNet6)
+        {
+#>
+#endif // NET6_0_OR_GREATER
+<#
+        }
+    }
+#>
