@@ -1,0 +1,93 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".g.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+namespace Rem.Core.Numerics;
+
+#nullable enable
+
+<#
+    (string TargetTypeName, bool IsSigned, string mostSignificantBit)[] typesToHandle = new[]
+    {
+        ("int", true, "MostSignificantIntBit"),
+        ("uint", false, "MostSignificantUIntBit"),
+        ("long", true, "MostSignificantLongBit"),
+        ("ulong", false, "MostSignificantULongBit"),
+    };
+#>
+public static partial class Maths
+{
+    private const int MostSignificantIntBit = 1 << (sizeof(int) * 8 - 2);
+    private const uint MostSignificantUIntBit = 1u << (sizeof(uint) * 8 - 2);
+    private const long MostSignificantLongBit = 1L << (sizeof(long) * 8 - 2);
+    private const ulong MostSignificantULongBit = 1uL << (sizeof(ulong) * 8 - 2);
+
+<#
+    bool isFirst = true;
+    foreach (var (targetTypeName, isSigned, mostSignificantBit) in typesToHandle)
+    {
+        if (isFirst) isFirst = false;
+        else // Leave space before this method
+        {
+#>
+
+<#
+        }
+#>
+    /// <summary>
+    /// Computes the integer square root of the given value.
+    /// </summary>
+    /// <param name="n">The value to compute the integer square root of.</param>
+    /// <returns></returns>
+<#
+        if (isSigned)
+        {
+#>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="n"/> was negative.
+    /// </exception>
+<#
+        }
+#>
+    public static <#=targetTypeName#> IntegerSqrt(<#=targetTypeName#> n)
+    {
+        switch (n) // Rule out some small cases
+        {
+<#
+        if (isSigned)
+        {
+#>
+            case < 0: throw NegativeValue(nameof(n), n);
+<#
+        }
+#>
+            case 0: return 0;
+            case < 4: return 1;
+            case < 9: return 2;
+            case < 16: return 3;
+        }
+
+        <#=targetTypeName#> root = 0;
+        <#=targetTypeName#> bit = <#=mostSignificantBit#>; // Start with the most significant bit
+
+        while (bit > n) bit >>= 2; // Reduce the bit position by 2 until it is less than n
+
+        for (; bit > 0; bit >>= 2)
+        {
+            var temp = root + bit;
+            root >>= 1;
+            if (n >= temp)
+            {
+                n -= temp;
+                root += bit;
+            }
+        }
+
+        return root;
+    }
+<#
+    }
+#>
+}

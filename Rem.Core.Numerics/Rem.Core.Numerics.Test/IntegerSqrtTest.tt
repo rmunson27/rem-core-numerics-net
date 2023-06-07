@@ -1,0 +1,95 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".g.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+using System.Numerics;
+using System.Runtime.CompilerServices;
+
+namespace Rem.Core.Numerics.Test;
+
+#nullable enable
+
+public partial class MathsTest
+{
+    private static readonly BigInteger MaxTestBigInteger = ((BigInteger)ulong.MaxValue + 1) << 4;
+
+<#
+    (string TargetTypeName, string TestName, bool IsSigned, string maxTestValue)[] typesToHandle = new[]
+    {
+        ("int", "Int", true, "int.MaxValue"),
+        ("uint", "UInt", false, "uint.MaxValue"),
+        ("long", "Long", true, "long.MaxValue"),
+        ("ulong", "ULong", false, "ulong.MaxValue"),
+        ("BigInteger", "BigInteger", true, "MaxTestBigInteger"),
+    };
+
+    for (int i = 0; i < typesToHandle.Length; i++)
+    {
+        var (targetTypeName, testName, isSigned, maxTestValue) = typesToHandle[i];
+
+        if (i != 0)
+        {
+#>
+
+<#
+        }
+#>
+    /// <summary>
+    /// Tests the <see cref="Maths.IntegerSqrt(<#=targetTypeName#>)" method.
+    /// </summary>
+    [TestMethod]
+    public void TestIntegerSqrt_<#=testName#>()
+    {
+<#
+        if (isSigned)
+        {
+#>
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => Maths.IntegerSqrt((<#=targetTypeName#>)(-1)));
+<#
+        }
+#>
+        Assert.AreEqual((<#=targetTypeName#>)0, Maths.IntegerSqrt((<#=targetTypeName#>)0));
+
+        <#=targetTypeName#> root = 1, current = 1, nextSquare = 4;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void RunLoop()
+        {
+            if (current == nextSquare) // Expected result increments
+            {
+                root += 1;
+                var nextRoot = root + 1;
+                nextSquare = nextRoot * nextRoot;
+            }
+            Assert.AreEqual(root, Maths.IntegerSqrt(current),
+                            $"Integer sqrt of {current} was not {root} (exact value {Math.Sqrt((double)current)}).");
+            current++;
+        }
+
+        // Run first 1 << 20
+        while (current < 1 << 20) RunLoop();
+
+        // Set up to run last 1 << 20
+        current = <#=maxTestValue#> - (1 << 20);
+        var doubleRoot = Math.Sqrt((double)current);
+        root = (<#=targetTypeName#>)Math.Round(Math.Sqrt((double)current), MidpointRounding.ToZero);
+        var currSquare = root * root;
+        if (currSquare == current)
+        {
+            nextSquare = current;
+        }
+        else
+        {
+            var nextRoot = root + 1;
+            nextSquare = nextRoot * nextRoot;
+        }
+
+        // Run last 1 << 20
+        while (current < <#=maxTestValue#>) RunLoop();
+    }
+<#
+    }
+#>
+}
