@@ -1,0 +1,830 @@
+﻿<#@ template language="C#" hostspecific="false" #>
+<#@ output extension=".g.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+// Compiler-generated
+using Rem.Core.Attributes;
+using Rem.Core.ComponentModel;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+
+namespace Rem.Core.Numerics;
+<#
+    foreach (var key in IntTypeKeys)
+    {
+        var IntInfo = Table[key];
+        var (TInt, TIntQualified, TRatio, NextKey, ArithmeticKey, RequiresNET7, Zero, One, NegOne, IsZero, IsOne, IsNegOne, FromArithmetic, FromArithmeticUnchecked)
+            = IntInfo;
+
+        var ArithmeticInfo = ArithmeticKey is ValueTuple<Nullable<int>, bool> ak ? Table[ak] : IntInfo;
+        var TArithmetic = ArithmeticInfo.TInt;
+
+        (string TInt, string TIntQualified,
+         string TRatio,
+         (int? Size, bool IsSigned)? NextKey,
+         (int? Size, bool IsSigned)? ArithmeticKey,
+         bool RequiresDotNet7,
+         string Zero,
+         string One,
+         string? NegOne,
+         Func<string, string> IsZero,
+         Func<string, string> IsOne,
+         Func<string, string> IsNegOne,
+         Func<string, string> FromArithmetic,
+         Func<string, string> FromArithmeticUnchecked)? NextInfo
+            = NextKey is ValueTuple<Nullable<int>, bool> nk ? Table[nk] : null;
+
+        var (Size, IsSigned) = key;
+        string Helpers = ArithmeticInfo.TIntQualified + "Helpers";
+#>
+
+<#
+
+        if (RequiresNET7)
+        {
+#>
+#if NET7_0_OR_GREATER
+<#
+        }
+#>
+/// <summary>
+/// Represents a ratio of <#=DescribeIntegerType(Size, IsSigned)#>s.
+/// </summary>
+public readonly record struct <#=TRatio#>
+{
+    #region Constants
+    /// <summary>The zero value of this type.</summary>
+    public static readonly <#=TRatio#> Zero = default;
+
+    /// <summary>The one value of this type.</summary>
+    public static readonly <#=TRatio#> One = new(<#=One#>, <#=One#>);
+<#
+        if (IsSigned)
+        {
+#>
+
+    /// <summary>The negative one value of this type.</summary>
+    public static readonly <#=TRatio#> NegativeOne = new(<#=NegOne#>, <#=One#>);
+<#
+        }
+#>
+    #endregion
+
+    #region Properties And Fields
+    /// <summary>Determines whether or not this instance is zero.</summary>
+    public bool IsZero => <#=IsZero("_denominator")#>;
+
+    /// <summary>Determines whether or not this instance is one.</summary>
+    public bool IsOne => <#=IsOne("_numerator")#> && <#=IsOne("_denominator")#>;
+
+    /// <summary>Gets whether or not this instance is a unit fraction.</summary>
+    public bool IsUnitFraction
+<#
+        if (IsSigned)
+        {
+#>
+        => <#=IsOne("Numerator")#> || <#=IsNegOne("Numerator")#>;
+<#
+        }
+        else
+        {
+#>
+        => <#=IsOne("Numerator")#>;
+<#
+        }
+#>
+
+    /// <summary>Gets whether or not this instance is a whole number.</summary>
+    public bool IsWhole => <#=IsOne("Denominator")#>;
+
+    /// <summary>Gets the reciprocal of this ratio.</summary>
+    public <#=TRatio#> Reciprocal
+    {
+        get
+        {
+            if (IsZero) throw new ZeroDenominatorException("Cannot compute the reciprocal of zero.");
+
+<#
+        if (IsSigned)
+        {
+#>
+            <#=TArithmetic#> num = _denominator, denom = _numerator;
+            <#=Helpers#>.FixUpSign(ref num, ref denom);
+            return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
+<#
+        }
+        else
+        {
+#>
+            return new(_denominator, _numerator);
+<#
+        }
+#>
+        }
+    }
+
+    /// <summary>Gets the numerator of the ratio, in lowest terms.</summary>
+    public <#=TInt#> Numerator => _numerator;
+    internal readonly <#=TInt#> _numerator;
+
+    /// <summary>Gets the denominator of the ratio, in lowest terms.</summary>
+    [Positive] public <#=TInt#> Denominator => <#=IsZero("_denominator")#> ? <#=One#> : _denominator;
+    internal readonly <#=TInt#> _denominator;
+    #endregion
+
+    #region Constructors And Factories
+    /// <summary>Creates the ratio given by the specified numerator and denominator.</summary>
+    /// <exception cref="ZeroDenominatorException"><paramref name="Denominator"/> was zero.</exception>
+    public static <#=TRatio#> Create(in <#=TInt#> Numerator, in <#=TInt#> Denominator)
+    {
+        if (<#=IsZero("Denominator")#>) throw new ZeroDenominatorException();
+        else if (<#=IsZero("Numerator")#>) return Zero;
+        else return Create_ZeroUnsafe(in Numerator, in Denominator);
+    }
+
+    /// <summary>Creates a ratio representing one over the specified denominator.</summary>
+    /// <exception cref="ZeroDenominatorException"><paramref name="Denominator"/> was zero.</exception>
+    public static <#=TRatio#> CreateOneOver(in <#=TInt#> Denominator)
+    {
+        if (<#=IsZero("Denominator")#>) throw new ZeroDenominatorException();
+
+<#
+        if (IsSigned)
+        {
+#>
+        <#=TArithmetic#> denom = Denominator;
+        if (Denominator < <#=Zero#>)
+        {
+            denom = -denom;
+            return new(<#=NegOne#>, <#=FromArithmetic("denom")#>);
+        }
+        else return new(<#=One#>, Denominator);
+<#
+        }
+        else
+        {
+#>
+        return new(<#=One#>, Denominator);
+<#
+        }
+#>
+    }
+
+    /// <summary>Creates a new ratio without checking for zero denominators.</summary>
+    /// <remarks>
+    /// Unlike public methods, if a zero denominator is encountered, the method will return 0 rather than
+    /// throwing an exception.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static <#=TRatio#> Create_ZeroUnsafe(in <#=TInt#> Numerator, in <#=TInt#> Denominator)
+    {
+        <#=TArithmetic#> n = Numerator, d = Denominator;
+        <#=Helpers#>.Reduce(ref n, ref d);
+<#
+        if (IsSigned)
+        {
+#>
+        <#=Helpers#>.FixUpSign(ref n, ref d);
+<#
+        }
+#>
+<#
+        if (ArithmeticKey is null)
+        {
+#>
+        return new(in n, in d);
+<#
+        } // ArithmeticKey is null
+        else if (!IsSigned) // Reduction can't cause a negative to become an invalid positive value - no need to check
+        {
+#>
+        return new(<#=FromArithmeticUnchecked("n")#>, <#=FromArithmeticUnchecked("d")#>);
+<#
+        } // ArithmeticKey is null - Else if !IsSigned
+        else // Need a checked cast
+        {
+#>
+        return new(<#=FromArithmetic("n")#>, <#=FromArithmetic("d")#>);
+<#
+        } // ArithmeticKey is null - Else
+#>
+    }
+
+    /// <summary>Constructor</summary>
+    /// <remarks>
+    /// This constructor does not reduce anything or check for zero denominators (as they are used to
+    /// represent valid values), and should only be used internally.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal <#=TRatio#>(in <#=TInt#> Numerator, in <#=TInt#> Denominator)
+    {
+        _numerator = Numerator;
+        _denominator = Denominator;
+    }
+    #endregion
+
+    #region Reading / Writing
+    /// <summary>Gets a string representing this instance.</summary>
+    /// <returns></returns>
+    public override string ToString()
+    {
+        if (Denominator == 1) return Numerator.ToString();
+        else return $"{Numerator} / {Denominator}";
+    }
+    #endregion
+
+    #region Arithmetic
+    /// <summary>Computes the truncation of this instance.</summary>
+    public <#=TInt#> Truncate()
+    {
+        if (IsWhole) return Numerator;
+        else return <#=FromArithmetic("(Numerator / Denominator)")#>;
+    }
+
+    /// <summary>
+    /// Computes the truncation of this instance, returning the remainder in an <see langword="out"/> parameter.
+    /// </summary>
+    public <#=TInt#> Truncate(out <#=TRatio#> remainder)
+    {
+        if (IsWhole)
+        {
+            remainder = <#=TRatio#>.Zero;
+            return Numerator;
+        }
+
+        var quotient = <#=Helpers#>.DivRem(Numerator, Denominator, out var arithmeticRem);
+        remainder = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
+        
+        return <#=FromArithmetic("quotient")#>;
+    }
+
+    /// <summary>
+    /// Computes the ceiling of this instance.
+    /// </summary>
+    public <#=TInt#> Ceiling()
+    {
+        if (IsWhole) return Numerator;
+
+        if (Numerator > 0) // Need to fix up the rounding since is truncated
+        {
+            return <#=FromArithmetic("(Numerator / Denominator + 1)")#>;
+        }
+        else return <#=FromArithmetic("(Numerator / Denominator)")#>; // Already rounded correctly
+    }
+
+<#
+        if (IsSigned) // Since remainder has to be negative for positive values
+        {
+#>
+    /// <summary>
+    /// Computes the ceiling of this instance, returning the remainder in an <see langword="out"/> parameter.
+    /// </summary>
+    public <#=TInt#> Ceiling(out <#=TRatio#> remainder)
+    {
+        if (IsWhole)
+        {
+            remainder = <#=TRatio#>.Zero;
+            return Numerator;
+        }
+
+        var quotient = <#=Helpers#>.DivRem(Numerator, Denominator, out var arithmeticRem);
+
+        if (Numerator > 0) // Need to fix up rounding since is truncated
+        {
+            remainder = Create(<#=FromArithmetic("(arithmeticRem - Denominator)")#>, Denominator);
+            return <#=FromArithmetic("(quotient + 1)")#>;
+        }
+        else // Already rounded correctly
+        {
+            remainder = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
+            return <#=FromArithmetic("quotient")#>;
+        }
+    }
+<#
+        }
+#>
+
+    /// <summary>
+    /// Computes the floor of this instance.
+    /// </summary>
+    public <#=TInt#> Floor()
+    {
+        if (IsWhole) return Numerator;
+
+        if (Numerator > 0) return <#=FromArithmetic("(Numerator / Denominator)")#>; // Already rounded correctly
+        else // Need to fix up rounding since is truncated
+        {
+            return <#=FromArithmetic("(Numerator / Denominator - 1)")#>;
+        }
+    }
+
+    /// <summary>
+    /// Computes the floor of this instance, returning the remainder in an <see langword="out"/> parameter.
+    /// </summary>
+    public <#=TInt#> Floor(out <#=TRatio#> remainder)
+    {
+        if (IsWhole)
+        {
+            remainder = <#=TRatio#>.Zero;
+            return Numerator;
+        }
+
+        var quotient = <#=Helpers#>.DivRem(Numerator, Denominator, out var arithmeticRem);
+
+        if (Numerator > 0) // Already rounded correctly
+        {
+            remainder = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
+            return <#=FromArithmetic("quotient")#>;
+        }
+        else // Need to fix up rounding since is truncated
+        {
+            remainder = Create(<#=FromArithmetic("(arithmeticRem + Denominator)")#>, Denominator);
+            return <#=FromArithmetic("(quotient - 1)")#>;
+        }
+    }
+
+    /// <summary>
+    /// Gets a whole number equivalent to this value in an <see langword="out"/> parameter if possible.
+    /// </summary>
+    /// <param name="value">The <see langword="out"/> parameter to save the value in.</param>
+    /// <returns>Whether or not this instance is a whole number.</returns>
+    public bool TryGetWhole(out <#=TInt#> value)
+        => IsWhole
+            ? Try.Success(out value, Numerator)
+            : Try.Failure(out value);
+
+<#
+        if (IsSigned)
+        {
+#>
+    /// <summary>Computes the additive inverse of the given value.</summary>
+    public static <#=TRatio#> operator checked -(in <#=TRatio#> value)
+        => new(<#=FromArithmetic("checked(-value._numerator)")#>, value._denominator);
+
+    /// <summary>Computes the additive inverse of the given value.</summary>
+    public static <#=TRatio#> operator -(in <#=TRatio#> value)
+        => new(<#=FromArithmeticUnchecked("(-value._numerator)")#>, value._denominator);
+<#
+        }
+#>
+
+    /// <summary>Computes the sum of two instances of this type.</summary>
+    public static <#=TRatio#> operator +(in <#=TRatio#> first, in <#=TRatio#> second)
+    {
+        if (first.IsZero) return second;
+        else if (second.IsZero) return first;
+
+        var denomLCM = <#=Helpers#>.CreateLikeFractions(first, second, out var num1, out var num2);
+        <#=TArithmetic#> num = num1 + num2;
+        <#=Helpers#>.Reduce(ref num, ref denomLCM);
+<#
+        if (IsSigned)
+        {
+#>
+        <#=Helpers#>.FixUpSign(ref num, ref denomLCM);
+<#
+        }
+#>
+        return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denomLCM")#>);
+    }
+
+    /// <summary>Computes the difference between two instances of this type.</summary>
+    public static <#=TRatio#> operator -(in <#=TRatio#> first, in <#=TRatio#> second)
+    {
+        if (first.IsZero)
+        {
+<#
+        if (IsSigned)
+        {
+#>
+            return -second;
+<#
+        }
+        else
+        {
+#>
+            if (second.IsZero) return Zero;
+            else throw new OverflowException("Cannot subtract nonzero value from zero.");
+<#
+        }
+#>
+        }
+        else if (second.IsZero) return first;
+
+        var denomLCM = <#=Helpers#>.CreateLikeFractions(first, second, out var num1, out var num2);
+        <#=TArithmetic#> num = num1 - num2;
+        <#=Helpers#>.Reduce(ref num, ref denomLCM);
+<#
+        if (IsSigned)
+        {
+#>
+        <#=Helpers#>.FixUpSign(ref num, ref denomLCM);
+<#
+        }
+#>
+        return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denomLCM")#>);
+    }
+
+    /// <summary>Computes the product of two instances of this type.</summary>
+    public static <#=TRatio#> operator *(in <#=TRatio#> first, in <#=TRatio#> second)
+    {
+        if (first.IsZero || second.IsZero) return Zero;
+
+        // Num and denom are already reduced for each fraction - only need to reduce with each other
+        // This can help with avoidable overflows
+        <#=TArithmetic#> firstNum = first._numerator, secondNum = second._numerator;
+        <#=TArithmetic#> firstDenom = first._denominator, secondDenom = second._denominator;
+        <#=Helpers#>.ReduceNonZero(ref firstNum, ref secondDenom);
+        <#=Helpers#>.ReduceNonZero(ref secondNum, ref firstDenom);
+
+        <#=TArithmetic#> num = firstNum * secondNum, denom = firstDenom * secondDenom;
+<#
+        if (IsSigned)
+        {
+#>
+        <#=Helpers#>.FixUpSign(ref num, ref denom);
+<#
+        }
+#>
+        return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
+    }
+
+    /// <summary>Computes the quotient of two instances of this type.</summary>
+    public static <#=TRatio#> operator /(in <#=TRatio#> first, in <#=TRatio#> second)
+    {
+        if (second.IsZero) throw new DivideByZeroException();
+        else if (first.IsZero) return Zero;
+
+        // Num and denom are already reduced for each fraction - only need to reduce with each other
+        // This can help with avoidable overflows
+        <#=TArithmetic#> firstNum = first._numerator, secondNum = second._numerator;
+        <#=TArithmetic#> firstDenom = first._denominator, secondDenom = second._denominator;
+        <#=Helpers#>.ReduceNonZero(ref firstNum, ref secondNum);
+        <#=Helpers#>.ReduceNonZero(ref firstDenom, ref secondDenom);
+
+        <#=TArithmetic#> num = firstNum * secondDenom, denom = firstDenom * secondNum;
+<#
+        if (IsSigned)
+        {
+#>
+        <#=Helpers#>.FixUpSign(ref num, ref denom);
+<#
+        }
+#>
+        return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
+    }
+
+    /// <summary>Computes the modulus of two instances of this type.</summary>
+    public static <#=TRatio#> operator %(in <#=TRatio#> first, in <#=TRatio#> second)
+    {
+        if (second.IsZero) throw new DivideByZeroException();
+        else if (first.IsZero) return Zero;
+
+        // Get like fractions
+        var denom = <#=Helpers#>.CreateLikeFractions(first, second, out var firstLike, out var secondLike);
+
+        // Compute the modulus and reduce it
+        var num = firstLike % secondLike;
+        <#=Helpers#>.Reduce(ref num, ref denom);
+<#
+        if (IsSigned)
+        {
+#>
+        <#=Helpers#>.FixUpSign(ref num, ref denom);
+<#
+        }
+#>
+        
+        return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
+    }
+    #endregion
+
+    #region Equality
+    /// <summary>Determines if this instance is equal to another instance of the same type.</summary>
+    /// <param name="other">The other <see cref="<#=TRatio#>"/> to compare for equality.</param>
+    public bool Equals(<#=TRatio#> other) => _numerator == other._numerator && _denominator == other._denominator;
+    
+    /// <summary>Gets a hash code for this instance.</summary>
+    public override int GetHashCode() => HashCode.Combine(_numerator, _denominator);
+    #endregion
+
+    #region Deconstruction
+    /// <summary>Deconstructs the ratio into its numerator and denominator, in lowest terms.</summary>
+    public void Deconstruct(out <#=TInt#> Numerator, [Positive] out <#=TInt#> Denominator)
+    {
+        (Numerator, Denominator) = (this.Numerator, this.Denominator);
+    }
+    #endregion
+
+    #region Conversion
+    /// <summary>Implicitly converts an <see cref="<#=TInt#>"/> to an equivalent <see cref="<#=TRatio#>"/>.
+    public static implicit operator <#=TRatio#>(<#=TInt#> i) => <#=IsZero("i")#> ? Zero : new(i, 1);
+<#
+        foreach (var otherKey in IntTypeKeys)
+        {
+            var (OtherSize, IsOtherSigned) = otherKey;
+            if (Size is null)
+            {
+                if (OtherSize is null && !IsSigned && IsOtherSigned) // Can convert to signed RatioInf
+                {
+#>
+
+<#
+                    WriteImplicitConversionPair(from: key, to: otherKey);
+#>
+
+<#
+                } // RatioInf conversion if
+            } // Size is null
+            else if (OtherSize is not int otherSz || otherSz > Size)
+            {
+                if (!IsSigned || IsOtherSigned)
+                {
+#>
+
+<#
+                    WriteImplicitConversionPair(from: key, to: otherKey);
+#>
+<#
+                } // !IsSigned || IsOtherSigned
+            } // Size is null - Else If
+        } // foreach int type key
+#>
+    #endregion
+}
+<#
+        if (RequiresNET7)
+        {
+#>
+#endif
+
+<#
+        }
+
+        if (ArithmeticKey is null)
+        {
+            if (RequiresNET7)
+            {
+#>
+#if NET7_0_OR_GREATER
+<#
+            }
+#>
+
+/// <summary>Helpers for defining the <see cref="<#=TRatio#>"/> type and other types using its arithmetic.
+file static class <#=Helpers#>
+{
+<#
+            if (Size is null && IsSigned)
+            {
+#>
+
+    public static readonly BigInteger NegativeOne = -1;
+<#
+            }
+#>
+    [MethodImpl(
+        MethodImplOptions.AggressiveInlining
+#if NET7_0_OR_GREATER
+            | MethodImplOptions.AggressiveOptimization
+#endif
+    )]
+    public static void Reduce(ref <#=TInt#> numerator, ref <#=TInt#> denominator)
+    {
+        if (<#=IsZero("numerator")#>)
+        {
+            denominator = 0;
+        }
+        else
+        {
+            ReduceNonZero(ref numerator, ref denominator);
+<#
+            if (IsSigned)
+            {
+#>
+            FixUpSign(ref numerator, ref denominator);
+<#
+            }
+#>
+        }
+    }
+
+    [MethodImpl(
+        MethodImplOptions.AggressiveInlining
+#if NET7_0_OR_GREATER
+            | MethodImplOptions.AggressiveOptimization
+#endif
+    )]
+    public static void ReduceNonZero([NonZero] ref <#=TInt#> numerator, [NonZero] ref <#=TInt#> denominator)
+    {
+        var gcd = GCD(numerator, denominator);
+        numerator /= gcd;
+        denominator /= gcd;
+    }
+
+    [MethodImpl(
+        MethodImplOptions.AggressiveInlining
+#if NET7_0_OR_GREATER
+            | MethodImplOptions.AggressiveOptimization
+#endif
+    )]
+    public static void FixUpSign([NonZero] ref <#=TInt#> numerator, [NonZero] ref <#=TInt#> denominator)
+    {
+<#
+            if (IsSigned)
+            {
+#>
+        if (denominator < 0) (numerator, denominator) = (-numerator, checked(-denominator));
+<#
+            }
+#>
+    }
+
+    [MethodImpl(
+        MethodImplOptions.AggressiveInlining
+#if NET7_0_OR_GREATER
+            | MethodImplOptions.AggressiveOptimization
+#endif
+    )]
+    public static <#=TInt#> CreateLikeFractions(
+<#
+        if (Size < 32)
+        {
+#>
+        <#=TRatio#> first, <#=TRatio#> second,
+<#
+        }
+        else
+        {
+#>
+        in <#=TRatio#> first, in <#=TRatio#> second,
+<#
+        }
+#>
+        out <#=TInt#> outNumerator1, out <#=TInt#> outNumerator2)
+    {
+        var (num1, denom1) = first;
+        var (num2, denom2) = second;
+
+        var denomGCD = GCD(denom1, denom2);
+        var denom1OverGCD = denom1 / denomGCD;
+        var denomLCM = denom2 * denom1OverGCD;
+        var denom2OverGCD = denom2 / denomGCD;
+
+        outNumerator1 = num1 * denom2OverGCD;
+        outNumerator2 = num2 * denom1OverGCD;
+
+        return denomLCM;
+    }
+
+    
+    [MethodImpl(
+        MethodImplOptions.AggressiveInlining
+#if NET7_0_OR_GREATER
+            | MethodImplOptions.AggressiveOptimization
+#endif
+    )]
+    public static <#=TInt#> DivRem(<#=TInt#> numerator, <#=TInt#> denominator, out <#=TInt#> remainder)
+    {
+<#
+            if (Size is null)
+            {
+#>
+        return <#=TInt#>.DivRem(numerator, denominator, out remainder);
+<#
+            }
+            else
+            {
+#>
+        remainder = numerator % denominator;
+        return numerator / denominator;
+<#
+            }
+#>
+    }
+
+    [MethodImpl(
+        MethodImplOptions.AggressiveInlining
+#if NET7_0_OR_GREATER
+            | MethodImplOptions.AggressiveOptimization
+#endif
+    )]
+    public static <#=TInt#> GCD(<#=TInt#> first, <#=TInt#> second)
+    {
+<#
+            if (Size is null)
+            {
+#>
+        return <#=TInt#>.GreatestCommonDivisor(first, second);
+<#
+            }
+            else
+            {
+#>
+            while (!(<#=IsZero("second")#>)) (first, second) = (second, first % second);
+            return first;
+<#
+            }
+#>
+    }
+}
+<#
+            if (RequiresNET7)
+            {
+#>
+#endif
+<#
+            }
+        } // ArithmeticKey is null
+    } // Foreach size
+#>
+<#+
+    (int? Size, bool IsSigned)[] IntTypeKeys = new (int?, bool)[]
+    {
+        (8, true), (8, false),
+        (16, true), (16, false),
+        (32, true), (32, false),
+        (64, true), (64, false),
+        (128, true), (128, false),
+        (null, true), (null, false),
+    };
+
+    Dictionary<
+        (int? Size, bool IsSigned),
+        (string TInt, string TIntQualified,
+         string TRatio,
+         (int? Size, bool IsSigned)? NextKey,
+         (int? Size, bool IsSigned)? ArithmeticKey,
+         bool RequiresDotNet7,
+         string Zero,
+         string One,
+         string? NegOne,
+         Func<string, string> IsZero,
+         Func<string, string> IsOne,
+         Func<string, string> IsNegOne,
+         Func<string, string> FromArithmetic,
+         Func<string, string> FromArithmeticUnchecked)> Table
+        = new()
+    {
+        // Key              TInt                  TIntQualified            TRatio          NextKey        Arithmetic   NET7   Zero                       One                       NegOne                           IsZero                     IsOne                      IsNegOne                     FromArithmetic                FromArithmeticUnchecked
+        // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        [(8, false)] =    ("byte",               "Byte",                   "URatio8",      (16, false),   (32, false), false, "(byte)0",                 "(byte)1",                null,                            s => $"{s} == (byte)0",    s => $"{s} == (byte)1",    null,                        s => $"checked((byte){s})",   s => $"unchecked((byte){s})"),
+        [(8, true)] =     ("sbyte",              "SByte",                  "Ratio8",       (16, true),    (32, true),  false, "(sbyte)0",                "(sbyte)1",               "(sbyte)(-1)",                   s => $"{s} == (sbyte)0",   s => $"{s} == (sbyte)1",   s => $"{s} == (sbyte)(-1)",  s => $"checked((sbyte){s})",  s => $"unchecked((sbyte){s})"),
+        [(16, false)] =   ("ushort",             "UInt16",                 "URatio16",     (32, false),   (32, false), false, "(ushort)0",               "(ushort)1",              null,                            s => $"{s} == (ushort)0",  s => $"{s} == (ushort)1",  null,                        s => $"checked((ushort){s})", s => $"unchecked((ushort){s})"),
+        [(16, true)] =    ("short",              "Int16",                  "Ratio16",      (32, true),    (32, true),  false, "(short)0",                "(short)1",               "(short)(-1)",                   s => $"{s} == (short)0",   s => $"{s} == (short)1",   s => $"{s} == (short)(-1)",  s => $"checked((short){s})",  s => $"unchecked((short){s})"),
+        [(32, false)] =   ("uint",               "UInt32",                 "URatio32",     (64, false),   null,        false, "0u",                      "1u",                     null,                            s => $"{s} == 0u",         s => $"{s} == 1u",         null,                        s => s,                       s => s),
+        [(32, true)] =    ("int",                "Int32",                  "Ratio32",      (64, true),    null,        false, "0",                       "1",                      "-1",                            s => $"{s} == 0",          s => $"{s} == 1",          s => $"{s} == -1",           s => s,                       s => s),
+        [(64, false)] =   ("ulong",              "UInt64",                 "URatio64",     (null, false), null,        false, "0uL",                     "1uL",                    null,                            s => $"{s} == 0uL",        s => $"{s} == 1uL",        null,                        s => s,                       s => s),
+        [(64, true)] =    ("long",               "Int64",                  "Ratio64",      (null, true),  null,        false, "0L",                      "1L",                     "-1L",                           s => $"{s} == 0L",         s => $"{s} == 1L",         s => $"{s} == -1L",          s => s,                       s => s),
+        [(128, false)] =  ("UInt128",            "UInt128",                "URatio128",    (null, false), null,        true,  "(UInt128)0",              "(UInt128)1",             null,                            s => $"{s} == (UInt128)0", s => $"{s} == (UInt128)1", null,                        s => s,                       s => s),
+        [(128, true)] =   ("Int128",             "Int128",                 "Ratio128",     (null, true),  null,        true,  "(Int128)0",               "(Int128)1",              "(Int128)(-1)",                  s => $"{s} == (Int128)0",  s => $"{s} == (Int128)1",  s => $"{s} == (Int128)(-1)", s => s,                       s => s),
+        [(null, false)] = ("BigUnsignedInteger", "BigUnsignedInteger",     "URatioInf",    null,          null,        false, "BigUnsignedInteger.Zero", "BigUnsignedInteger.One", null,                            s => $"{s}.IsZero",        s => $"{s}.IsOne",         null,                        s => s,                       s => s),
+        [(null, true)] =  ("BigInteger",         "BigInteger",             "RatioInf",     null,          null,        false, "BigInteger.Zero",         "BigInteger.One",         "BigIntegerHelpers.NegativeOne", s => $"{s}.IsZero",        s => $"{s}.IsOne",         s => $"{s} == -1",           s => s,                       s => s),
+    };
+
+    string DescribeIntegerType(int? Size, bool IsSigned)
+    {
+        string result = Size switch
+        {
+            null => "infinite-precision",
+            int sz => $"{sz}-bit",
+        };
+
+        if (!IsSigned) result += " unsigned";
+
+        result += " integer";
+
+        return result;
+    }
+
+    void WriteImplicitConversionPair((int? Size, bool IsSigned) from, (int? Size, bool IsSigned) to)
+    {
+        var fromInfo = Table[from];
+        var toInfo = Table[to];
+
+        if (toInfo.RequiresDotNet7)
+        {
+#>
+#if NET7_0_OR_GREATER
+<#+
+        }
+#>
+    /// <summary>Implicitly converts a <see cref="<#=fromInfo.TRatio#>"/> to a <see cref="<#=toInfo.TRatio#>"/>.</summary>
+    public static implicit operator <#=toInfo.TRatio#>(<#=fromInfo.TRatio#> r) => new(r._numerator, r._denominator);
+
+    /// <summary>Explicitly converts a <see cref="<#=toInfo.TRatio#>"/> to a <see cref="<#=toInfo.TRatio#>"/>.</summary>
+    /// <exception cref="OverflowException">
+    /// The <see cref="<#=toInfo.TRatio#>" is too large (or small) for a <see cref="<#=fromInfo.TRatio#>"/>.
+    /// </exception>
+    public static explicit operator <#=fromInfo.TRatio#>(<#=toInfo.TRatio#> r) => new((<#=fromInfo.TInt#>)r._numerator, (<#=fromInfo.TInt#>)r._denominator);
+<#+
+        if (toInfo.RequiresDotNet7)
+        {
+#>
+#endif
+<#+
+        }
+    }
+#>

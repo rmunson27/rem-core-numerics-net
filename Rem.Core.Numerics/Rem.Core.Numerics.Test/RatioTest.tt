@@ -1,0 +1,500 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".g.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+using System.Numerics;
+
+namespace Rem.Core.Numerics.Test.Ratio;
+
+<#
+    foreach (var key in IntTypeKeys)
+    {
+        var IntInfo = Table[key];
+        var (TInt, TIntQualified, TRatio, NextKey, ArithmeticKey, RequiresNET7, Zero, One, NegOne, IsZero, IsOne, IsNegOne, FromArithmetic, FromArithmeticUnchecked)
+            = IntInfo;
+
+        var ArithmeticInfo = ArithmeticKey is ValueTuple<Nullable<int>, bool> ak ? Table[ak] : IntInfo;
+        var TArithmetic = ArithmeticInfo.TInt;
+
+        (string TInt, string TIntQualified,
+         string TRatio,
+         (int? Size, bool IsSigned)? NextKey,
+         (int? Size, bool IsSigned)? ArithmeticKey,
+         bool RequiresDotNet7,
+         string Zero,
+         string One,
+         string? NegOne,
+         Func<string, string> IsZero,
+         Func<string, string> IsOne,
+         Func<string, string> IsNegOne,
+         Func<string, string> FromArithmetic,
+         Func<string, string> FromArithmeticUnchecked)? NextInfo
+            = NextKey is ValueTuple<Nullable<int>, bool> nk ? Table[nk] : null;
+
+        var (Size, IsSigned) = key;
+
+        Func<string, string> N = IsSigned ? s => s : s => $"{s}u";
+#>
+/// <summary>
+/// Tests for the <see cref="<#=TRatio#>"/> struct.
+/// </summary>
+[TestClass]
+public class <#=TRatio#>Test
+{
+    #region Tests
+    #region Construction And Factories
+    /// <summary>
+    /// Tests the creation factory method.
+    /// </summary>
+    [TestMethod]
+    public void TestCreation()
+    {
+        <#=TRatio#> r = <#=TRatio#>.Create(6, 3);
+        Assert.AreEqual(<#=N("2")#>, r.Numerator);
+        Assert.AreEqual(<#=N("1")#>, r.Denominator);
+
+        r = <#=TRatio#>.Create(15, 27);
+        Assert.AreEqual(<#=N("5")#>, r.Numerator);
+        Assert.AreEqual(<#=N("9")#>, r.Denominator);
+
+        Assert.ThrowsException<ZeroDenominatorException>(() => <#=TRatio#>.Create(1, 0));
+
+        r = <#=TRatio#>.Create(0, 5);
+        Assert.AreEqual(<#=N("0")#>, r.Numerator);
+        Assert.AreEqual(<#=N("1")#>, r.Denominator);
+<#
+        if (IsSigned)
+        {
+#>
+
+        r = <#=TRatio#>.Create(-4, 18);
+        Assert.AreEqual(-2, r.Numerator);
+        Assert.AreEqual(9, r.Denominator);
+
+        r = <#=TRatio#>.Create(4, -18);
+        Assert.AreEqual(-2, r.Numerator);
+        Assert.AreEqual(9, r.Denominator);
+
+        r = <#=TRatio#>.Create(0, -4);
+        Assert.AreEqual(0, r.Numerator);
+        Assert.AreEqual(1, r.Denominator);
+
+        r = <#=TRatio#>.Create(-4, -6);
+        Assert.AreEqual(2, r.Numerator);
+        Assert.AreEqual(3, r.Denominator);
+
+<#
+            if (Size is not null)
+            {
+#>
+        Assert.ThrowsException<OverflowException>(() => <#=TRatio#>.Create(1, <#=TInt#>.MinValue));
+<#
+            }
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests the "create one over" factory method.
+    /// </summary>
+    [TestMethod]
+    public void TestCreateOneOver()
+    {
+        <#=TRatio#> r = <#=TRatio#>.CreateOneOver(3);
+        Assert.AreEqual(<#=N("1")#>, r.Numerator);
+        Assert.AreEqual(<#=N("3")#>, r.Denominator);
+
+        Assert.ThrowsException<ZeroDenominatorException>(() => <#=TRatio#>.CreateOneOver(0));
+<#
+        if (IsSigned)
+        {
+#>
+
+        r = <#=TRatio#>.CreateOneOver(-5);
+        Assert.AreEqual(-1, r.Numerator);
+        Assert.AreEqual(5, r.Denominator);
+<#
+        }
+#>
+    }
+    #endregion
+
+    #region Classification
+    /// <summary>
+    /// Tests the "is whole" property and the "try get whole" property.
+    /// </summary>
+    [TestMethod]
+    public void TestWhole()
+    {
+        Assert.IsTrue(<#=TRatio#>.Create(2, 1).IsWhole);
+        Assert.IsTrue(<#=TRatio#>.Create(1, 1).IsWhole);
+        Assert.IsTrue(<#=TRatio#>.Create(0, 1).IsWhole);
+        Assert.IsFalse(<#=TRatio#>.Create(1, 2).IsWhole);
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.IsFalse(<#=TRatio#>.Create(-4, 3).IsWhole);
+<#
+        }
+#>
+
+#pragma warning disable IDE0018 // DON'T inline variable declaration - cleaner to do it here
+        <#=TInt#> whole;
+#pragma warning restore IDE0018
+
+        Assert.IsTrue(<#=TRatio#>.Create(2, 1).TryGetWhole(out whole));
+        Assert.AreEqual(<#=N("2")#>, whole);
+
+        Assert.IsFalse(<#=TRatio#>.Create(2, 3).TryGetWhole(out _));
+<#
+        if (IsSigned)
+        {
+#>
+
+        Assert.IsTrue(<#=TRatio#>.Create(-2, 1).TryGetWhole(out whole));
+        Assert.AreEqual(-2, whole);
+
+        Assert.IsFalse(<#=TRatio#>.Create(-2, 3).TryGetWhole(out _));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests the "is unit fraction" property.
+    /// </summary>
+    [TestMethod]
+    public void TestIsUnitFraction()
+    {
+        Assert.IsTrue(<#=TRatio#>.CreateOneOver(3).IsUnitFraction);
+        Assert.IsFalse(default(<#=TRatio#>).IsUnitFraction);
+        Assert.IsFalse(<#=TRatio#>.Create(3, 4).IsUnitFraction);
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.IsFalse(<#=TRatio#>.Create(-3, 4).IsUnitFraction);
+        Assert.IsTrue(<#=TRatio#>.CreateOneOver(-3).IsUnitFraction);
+<#
+        }
+#>
+    }
+    #endregion
+
+    #region Arithmetic
+    /// <summary>
+    /// Tests truncation operations.
+    /// </summary>
+    [TestMethod]
+    public void TestTruncate()
+    {
+        <#=TRatio#> remainder;
+
+        void AssertResult(
+            <#=TRatio#> ratio,
+            <#=TInt#> expectedQuotient, <#=TRatio#> expectedRemainder)
+        {
+            Assert.AreEqual(expectedQuotient, ratio.Truncate());
+
+            Assert.AreEqual(expectedQuotient, ratio.Truncate(out remainder));
+            Assert.AreEqual(expectedRemainder, remainder);
+        }
+
+        AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(3, 4));
+        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)2, <#=TRatio#>.Create(1, 2));
+<#
+        if (IsSigned)
+        {
+#>
+        AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(-3, 4));
+        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-2), <#=TRatio#>.Create(-1, 2));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests ceiling operations.
+    /// </summary>
+    [TestMethod]
+    public void TestCeiling()
+    {
+        <#=TRatio#> remainder;
+
+        void AssertResult(
+            <#=TRatio#> ratio,
+            <#=TInt#> expectedQuotient, <#=TRatio#> expectedRemainder)
+        {
+            Assert.AreEqual(expectedQuotient, ratio.Ceiling());
+<#
+        if (IsSigned)
+        {
+#>
+
+            Assert.AreEqual(expectedQuotient, ratio.Ceiling(out remainder));
+            Assert.AreEqual(expectedRemainder, remainder);
+<#
+        }
+#>
+        }
+
+        AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
+<#
+        if (IsSigned)
+        {
+#>
+        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)1, <#=TRatio#>.Create(-1, 4));
+        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)3, <#=TRatio#>.Create(-1, 2));
+        AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(-3, 4));
+        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-2), <#=TRatio#>.Create(-1, 2));
+<#
+        }
+        else // Remainder will be ignored
+        {
+#>
+        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)1, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)3, default(<#=TRatio#>));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests floor operations.
+    /// </summary>
+    [TestMethod]
+    public void TestFloor()
+    {
+        <#=TRatio#> remainder;
+
+        void AssertResult(
+            <#=TRatio#> ratio,
+            <#=TInt#> expectedQuotient, <#=TRatio#> expectedRemainder)
+        {
+            Assert.AreEqual(expectedQuotient, ratio.Floor());
+
+            Assert.AreEqual(expectedQuotient, ratio.Floor(out remainder));
+            Assert.AreEqual(expectedRemainder, remainder);
+        }
+
+        AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(3, 4));
+        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)2, <#=TRatio#>.Create(1, 2));
+<#
+        if (IsSigned)
+        {
+#>
+        AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)(-1), <#=TRatio#>.Create(1, 4));
+        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-3), <#=TRatio#>.Create(1, 2));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests addition operators and other addition functions.
+    /// </summary>
+    [TestMethod]
+    public void TestAddition()
+    {
+        Assert.AreEqual(<#=TRatio#>.Create(7, 12), <#=TRatio#>.Create(1, 3) + <#=TRatio#>.Create(1, 4));
+        Assert.AreEqual(<#=TRatio#>.Create(7, 12), <#=TRatio#>.Create(1, 4) + <#=TRatio#>.Create(1, 3));
+        Assert.AreEqual(<#=TRatio#>.Create(1, 5), <#=TRatio#>.Create(1, 5) + default(<#=TRatio#>));
+        Assert.AreEqual(<#=TRatio#>.Create(1, 5), default(<#=TRatio#>) + <#=TRatio#>.Create(1, 5));
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.AreEqual(<#=TRatio#>.Create(5, 12), <#=TRatio#>.Create(1, 2) + <#=TRatio#>.Create(-1, 12));
+        Assert.AreEqual(<#=TRatio#>.Create(5, 12), <#=TRatio#>.Create(-1, 12) + <#=TRatio#>.Create(1, 2));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests subtraction operators and other subtraction functions.
+    /// </summary>
+    [TestMethod]
+    public void TestSubtraction()
+    {
+        Assert.AreEqual(<#=TRatio#>.Create(4, 5), <#=TRatio#>.Create(18, 19) - <#=TRatio#>.Create(14, 95));
+        Assert.AreEqual(<#=TRatio#>.Create(3, 2), <#=TRatio#>.Create(3, 2) - default(<#=TRatio#>));
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.AreEqual(<#=TRatio#>.Create(5, 6), <#=TRatio#>.Create(1, 2) - <#=TRatio#>.Create(-1, 3));
+        Assert.AreEqual(<#=TRatio#>.Create(-5, 6), <#=TRatio#>.Create(-1, 2) - <#=TRatio#>.Create(1, 3));
+        Assert.AreEqual(<#=TRatio#>.Create(-3, 4), default(<#=TRatio#>) - <#=TRatio#>.Create(3, 4));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests multiplication operators and other multiplication functions.
+    /// </summary>
+    [TestMethod]
+    public void TestMultiplication()
+    {
+        Assert.AreEqual(<#=TRatio#>.One, <#=TRatio#>.Create(3, 4) * <#=TRatio#>.Create(4, 3));
+        Assert.AreEqual(<#=TRatio#>.Create(21, 10), <#=TRatio#>.Create(3, 2) * <#=TRatio#>.Create(7, 5));
+        Assert.AreEqual(<#=TRatio#>.Create(4, 5), <#=TRatio#>.Create(4, 5) * <#=TRatio#>.One);
+        Assert.AreEqual(<#=TRatio#>.Create(4, 5), <#=TRatio#>.One * <#=TRatio#>.Create(4, 5));
+        Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Create(2, 1) * <#=TRatio#>.Zero);
+        Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Zero * <#=TRatio#>.Create(2, 1));
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.AreEqual(<#=TRatio#>.Create(-5, 4), <#=TRatio#>.NegativeOne * <#=TRatio#>.Create(5, 4));
+        Assert.AreEqual(<#=TRatio#>.Create(21, 10), <#=TRatio#>.Create(-3, 2) * <#=TRatio#>.Create(-7, 5));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests division operators and other division functions.
+    /// </summary>
+    [TestMethod]
+    public void TestDivision()
+    {
+        Assert.AreEqual(<#=TRatio#>.One, <#=TRatio#>.Create(3, 4) / <#=TRatio#>.Create(3, 4));
+        Assert.AreEqual(<#=TRatio#>.Create(7, 5), <#=TRatio#>.Create(21, 10) / <#=TRatio#>.Create(3, 2));
+        Assert.AreEqual(<#=TRatio#>.Create(4, 5), <#=TRatio#>.Create(4, 5) / <#=TRatio#>.One);
+        Assert.AreEqual(<#=TRatio#>.Create(5, 4), <#=TRatio#>.One / <#=TRatio#>.Create(4, 5));
+        Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Zero / <#=TRatio#>.Create(10, 1));
+        Assert.ThrowsException<DivideByZeroException>(() => <#=TRatio#>.Create(10, 1) / <#=TRatio#>.Zero);
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.AreEqual(<#=TRatio#>.Create(-4, 5), <#=TRatio#>.NegativeOne / <#=TRatio#>.Create(5, 4));
+        Assert.AreEqual(<#=TRatio#>.Create(-5, 4), <#=TRatio#>.Create(5, 4) / <#=TRatio#>.NegativeOne);
+        Assert.AreEqual(<#=TRatio#>.Create(7, 5), <#=TRatio#>.Create(-21, 10) / <#=TRatio#>.Create(-3, 2));
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Tests modulus operators and other modulus functions.
+    /// </summary>
+    [TestMethod]
+    public void TestModulus()
+    {
+        Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Create(4, 5) % <#=TRatio#>.Create(4, 5));
+        Assert.AreEqual(<#=TRatio#>.One, <#=TRatio#>.Create(5, 2) % <#=TRatio#>.Create(3, 2));
+        Assert.AreEqual(<#=TRatio#>.Create(1, 6), <#=TRatio#>.Create(3, 2) % <#=TRatio#>.Create(2, 3));
+        Assert.AreEqual(<#=TRatio#>.Create(6, 7), <#=TRatio#>.Create(6, 7) % <#=TRatio#>.One);
+        Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Zero % <#=TRatio#>.Create(4, 5));
+        Assert.ThrowsException<DivideByZeroException>(() => <#=TRatio#>.Create(4, 5) % <#=TRatio#>.Zero);
+<#
+        if (IsSigned)
+        {
+#>
+        Assert.AreEqual(<#=TRatio#>.Create(-1, 6), <#=TRatio#>.Create(-3, 2) % <#=TRatio#>.Create(2, 3));
+        Assert.AreEqual(<#=TRatio#>.Create(1, 6), <#=TRatio#>.Create(3, 2) % <#=TRatio#>.Create(-2, 3));
+<#
+        }
+#>
+    }
+
+<#
+        if (IsSigned)
+        {
+#>
+    /// <summary>
+    /// Tests negation operators and other negation functions.
+    /// </summary>
+    [TestMethod]
+    public void TestNegation()
+    {
+        Assert.AreEqual(<#=TRatio#>.Zero, -<#=TRatio#>.Zero);
+        Assert.AreEqual(<#=TRatio#>.Create(3, 4), -<#=TRatio#>.Create(-3, 4));
+        Assert.AreEqual(<#=TRatio#>.Create(-3, 4), -<#=TRatio#>.Create(3, 4));
+<#
+            if (Size is not null)
+            {
+#>
+
+        // Make sure that the min value of the type cannot be negated in checked mode
+        checked
+        {
+            Assert.ThrowsException<OverflowException>(() => -<#=TRatio#>.Create(<#=TInt#>.MinValue, 1));
+        }
+        unchecked
+        {
+            Assert.AreEqual(<#=TRatio#>.Create(<#=TInt#>.MinValue, 1), -<#=TRatio#>.Create(<#=TInt#>.MinValue, 1));
+        }
+<#
+            }
+#>
+    }
+<#
+        }
+#>
+    #endregion
+    #endregion
+}
+
+<#
+    }
+#>
+
+<#+
+    (int? Size, bool IsSigned)[] IntTypeKeys = new (int?, bool)[]
+    {
+        (8, true), (8, false),
+        (16, true), (16, false),
+        (32, true), (32, false),
+        (64, true), (64, false),
+        (128, true), (128, false),
+        (null, true), (null, false),
+    };
+
+    Dictionary<
+        (int? Size, bool IsSigned),
+        (string TInt, string TIntQualified,
+         string TRatio,
+         (int? Size, bool IsSigned)? NextKey,
+         (int? Size, bool IsSigned)? ArithmeticKey,
+         bool RequiresDotNet7,
+         string Zero,
+         string One,
+         string? NegOne,
+         Func<string, string> IsZero,
+         Func<string, string> IsOne,
+         Func<string, string> IsNegOne,
+         Func<string, string> FromArithmetic,
+         Func<string, string> FromArithmeticUnchecked)> Table
+        = new()
+    {
+        // Key              TInt                  TIntQualified            TRatio          NextKey        Arithmetic   NET7   Zero                       One                       NegOne                           IsZero                     IsOne                      IsNegOne                     FromArithmetic       FromArithmeticUnchecked
+        // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        [(8, false)] =    ("byte",               "Byte",                   "URatio8",      (16, false),   (32, false), false, "(byte)0",                 "(byte)1",                null,                            s => $"{s} == (byte)0",    s => $"{s} == (byte)1",    null,                        s => $"(byte){s}",   s => $"unchecked((byte){s})"),
+        [(8, true)] =     ("sbyte",              "SByte",                  "Ratio8",       (16, true),    (32, true),  false, "(sbyte)0",                "(sbyte)1",               "(sbyte)(-1)",                   s => $"{s} == (sbyte)0",   s => $"{s} == (sbyte)1",   s => $"{s} == (sbyte)(-1)",  s => $"(sbyte){s}",  s => $"unchecked((sbyte){s})"),
+        [(16, false)] =   ("ushort",             "UInt16",                 "URatio16",     (32, false),   (32, false), false, "(ushort)0",               "(ushort)1",              null,                            s => $"{s} == (ushort)0",  s => $"{s} == (ushort)1",  null,                        s => $"(ushort){s}", s => $"unchecked((ushort){s})"),
+        [(16, true)] =    ("short",              "Int16",                  "Ratio16",      (32, true),    (32, true),  false, "(short)0",                "(short)1",               "(short)(-1)",                   s => $"{s} == (short)0",   s => $"{s} == (short)1",   s => $"{s} == (short)(-1)",  s => $"(short){s}",  s => $"unchecked((short){s})"),
+        [(32, false)] =   ("uint",               "UInt32",                 "URatio32",     (64, false),   null,        false, "0u",                      "1u",                     null,                            s => $"{s} == 0u",         s => $"{s} == 1u",         null,                        s => s,              s => s),
+        [(32, true)] =    ("int",                "Int32",                  "Ratio32",      (64, true),    null,        false, "0",                       "1",                      "-1",                            s => $"{s} == 0",          s => $"{s} == 1",          s => $"{s} == -1",           s => s,              s => s),
+        [(64, false)] =   ("ulong",              "UInt64",                 "URatio64",     (null, false), null,        false, "0uL",                     "1uL",                    null,                            s => $"{s} == 0uL",        s => $"{s} == 1uL",        null,                        s => s,              s => s),
+        [(64, true)] =    ("long",               "Int64",                  "Ratio64",      (null, true),  null,        false, "0L",                      "1L",                     "-1L",                           s => $"{s} == 0L",         s => $"{s} == 1L",         s => $"{s} == -1L",          s => s,              s => s),
+        [(128, false)] =  ("UInt128",            "UInt128",                "URatio128",    (null, false), null,        true,  "(UInt128)0",              "(UInt128)1",             null,                            s => $"{s} == (UInt128)0", s => $"{s} == (UInt128)1", null,                        s => s,              s => s),
+        [(128, true)] =   ("Int128",             "Int128",                 "Ratio128",     (null, true),  null,        true,  "(Int128)0",               "(Int128)1",              "(Int128)(-1)",                  s => $"{s} == (Int128)0",  s => $"{s} == (Int128)1",  s => $"{s} == (Int128)(-1)", s => s,              s => s),
+        [(null, false)] = ("BigUnsignedInteger", "BigUnsignedInteger",     "URatioInf",    null,          null,        false, "BigUnsignedInteger.Zero", "BigUnsignedInteger.One", null,                            s => $"{s}.IsZero",        s => $"{s}.IsOne",         null,                        s => s,              s => s),
+        [(null, true)] =  ("BigInteger",         "BigInteger",             "RatioInf",     null,          null,        false, "BigInteger.Zero",         "BigInteger.One",         "BigIntegerHelpers.NegativeOne", s => $"{s}.IsZero",        s => $"{s}.IsOne",         s => $"{s} == -1",           s => s,              s => s),
+    };
+#>
