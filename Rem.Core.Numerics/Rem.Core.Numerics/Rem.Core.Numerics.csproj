@@ -1,10 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Label="Targets">
+    <!--
+      Targets:
+        net461, netstandard2.0  - Basic
+        netstandard2.1          - Basic, but doesn't require the BCL HashCode
+        netcoreapp3.1, net5.0   - No warnings in doc comments for casting from MidpointRounding -> RoundingStrategy
+        net6.0                  - System.Half supported
+        net7.0                  - Numeric type INumber<TSelf> implementations
+    -->
     <TargetFrameworks>net461;netstandard2.0;netstandard2.1;netcoreapp3.1;net5.0;net6.0;net7.0</TargetFrameworks>
   </PropertyGroup>
 
   <PropertyGroup Label="Language">
+
     <LangVersion>11.0</LangVersion>
 
     <ImplicitUsings>enable</ImplicitUsings>
@@ -15,27 +24,53 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+
+    <PackageReference Include="IsExternalInit" Version="1.0.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
     <PackageReference Include="Nullable" Version="1.3.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+
+    <PackageReference Include="IsExternalInit" Version="1.0.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
     <PackageReference Include="Nullable" Version="1.3.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+
+    <PackageReference Include="IsExternalInit" Version="1.0.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
     <PackageReference Include="Nullable" Version="1.3.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
+    <PackageReference Include="IsExternalInit" Version="1.0.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
     <PackageReference Include="Nullable" Version="1.3.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -45,10 +80,46 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Rem.Core.Utilities.Enums" Version="1.1.0" />
+    <PackageReference Include="Rem.Core.Collections" Version="1.2.0" />
+    <PackageReference Include="Rem.Core.ComponentModel" Version="1.3.1" />
     <PackageReference Include="Rem.Core.Numerics.Digits" Version="1.1.3" />
     <PackageReference Include="Rem.Core.Numerics.FloatingPointComponents" Version="1.0.1" />
-    <PackageReference Include="Rem.Core.Collections" Version="1.2.0" />
+    <PackageReference Include="Rem.Core.Utilities.Enums" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <None Update="IntegerSqrt.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>IntegerSqrt.g.cs</LastGenOutput>
+    </None>
+
+    <None Update="StaticFloatingPoint.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>StaticFloatingPoint.g.cs</LastGenOutput>
+    </None>
+
+    <None Update="Ratio.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Ratio.g.cs</LastGenOutput>
+    </None>
+
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <Compile Update="IntegerSqrt.g.cs">
+      <DependentUpon>IntegerSqrt.tt</DependentUpon>
+    </Compile>
+
+    <Compile Update="StaticFloatingPoint.g.cs">
+      <DependentUpon>StaticFloatingPoint.tt</DependentUpon>
+    </Compile>
+
+    <Compile Update="Ratio.g.cs">
+      <DependentUpon>Ratio.tt</DependentUpon>
+    </Compile>
+
   </ItemGroup>
 
 </Project>
