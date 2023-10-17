@@ -634,6 +634,12 @@ public readonly record struct BigUnsignedInteger
     /// Implicitly casts a <see cref="ulong"/> to a <see cref="BigUnsignedInteger"/>.
     /// </summary>
     /// <param name="ul"></param>
+    public static implicit operator BigUnsignedInteger(uint ui) => new(ui);
+
+    /// <summary>
+    /// Implicitly casts a <see cref="ulong"/> to a <see cref="BigUnsignedInteger"/>.
+    /// </summary>
+    /// <param name="ul"></param>
     public static implicit operator BigUnsignedInteger(ulong ul) => new(ul);
 
     /// <summary>
@@ -751,6 +757,24 @@ public readonly record struct BigUnsignedInteger
         => bi >= 0
             ? new(bi)
             : throw NegativeCast();
+
+    /// <summary>
+    /// Explicitly converts a <see cref="double"/> to a <see cref="BigUnsignedInteger"/>.
+    /// </summary>
+    /// <param name="d"></param>
+    /// <exception cref="InvalidCastException">The value being cast is negative.</exception>
+    public static explicit operator BigUnsignedInteger(double d)
+    {
+        var bi = (BigInteger)d;
+        if (bi < 0) throw NegativeCast();
+        else return new(bi);
+    }
+
+    /// <summary>
+    /// Explicitly converts a <see cref="BigUnsignedInteger"/> to a <see cref="double"/>.
+    /// </summary>
+    /// <param name="i"></param>
+    public static explicit operator double(BigUnsignedInteger i) => (double)i._value;
 
 #if NET7_0_OR_GREATER
     static bool INumberBase<BigUnsignedInteger>.TryConvertFromChecked<TOther>(
