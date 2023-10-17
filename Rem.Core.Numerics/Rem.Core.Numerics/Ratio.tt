@@ -274,18 +274,14 @@ public readonly record struct <#=TRatio#>
         else return <#=FromArithmetic("(Numerator / Denominator)")#>; // Already rounded correctly
     }
 
-<#
-        if (IsSigned) // Since remainder has to be negative for positive values
-        {
-#>
     /// <summary>
-    /// Computes the ceiling of this instance, returning the remainder in an <see langword="out"/> parameter.
+    /// Computes the ceiling of this instance, returning the amount added in an <see langword="out"/> parameter.
     /// </summary>
-    public <#=TInt#> Ceiling(out <#=TRatio#> remainder)
+    public <#=TInt#> Ceiling([NonNegative] out <#=TRatio#> addition)
     {
         if (IsWhole)
         {
-            remainder = <#=TRatio#>.Zero;
+            addition = <#=TRatio#>.Zero;
             return Numerator;
         }
 
@@ -293,18 +289,15 @@ public readonly record struct <#=TRatio#>
 
         if (Numerator > 0) // Need to fix up rounding since is truncated
         {
-            remainder = Create(<#=FromArithmetic("(arithmeticRem - Denominator)")#>, Denominator);
+            addition = Create(<#=FromArithmetic("(Denominator - arithmeticRem)")#>, Denominator);
             return <#=FromArithmetic("(quotient + 1)")#>;
         }
         else // Already rounded correctly
         {
-            remainder = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
+            addition = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
             return <#=FromArithmetic("quotient")#>;
         }
     }
-<#
-        }
-#>
 
     /// <summary>
     /// Computes the floor of this instance.
@@ -321,13 +314,13 @@ public readonly record struct <#=TRatio#>
     }
 
     /// <summary>
-    /// Computes the floor of this instance, returning the remainder in an <see langword="out"/> parameter.
+    /// Computes the floor of this instance, returning the amount subtracted in an <see langword="out"/> parameter.
     /// </summary>
-    public <#=TInt#> Floor(out <#=TRatio#> remainder)
+    public <#=TInt#> Floor([NonNegative] out <#=TRatio#> subtraction)
     {
         if (IsWhole)
         {
-            remainder = <#=TRatio#>.Zero;
+            subtraction = <#=TRatio#>.Zero;
             return Numerator;
         }
 
@@ -335,12 +328,12 @@ public readonly record struct <#=TRatio#>
 
         if (Numerator > 0) // Already rounded correctly
         {
-            remainder = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
+            subtraction = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
             return <#=FromArithmetic("quotient")#>;
         }
         else // Need to fix up rounding since is truncated
         {
-            remainder = Create(<#=FromArithmetic("(arithmeticRem + Denominator)")#>, Denominator);
+            subtraction = Create(<#=FromArithmetic("(arithmeticRem + Denominator)")#>, Denominator);
             return <#=FromArithmetic("(quotient - 1)")#>;
         }
     }

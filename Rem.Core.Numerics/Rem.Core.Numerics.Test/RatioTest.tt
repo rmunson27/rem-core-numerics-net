@@ -225,43 +225,27 @@ public class <#=TRatio#>Test
     [TestMethod]
     public void TestCeiling()
     {
-        <#=TRatio#> remainder;
-
-        void AssertResult(
+        static void AssertResult(
             <#=TRatio#> ratio,
-            <#=TInt#> expectedQuotient, <#=TRatio#> expectedRemainder)
+            <#=TInt#> expectedQuotient, <#=TRatio#> expectedAddition)
         {
             Assert.AreEqual(expectedQuotient, ratio.Ceiling());
-<#
-        if (IsSigned)
-        {
-#>
 
-            Assert.AreEqual(expectedQuotient, ratio.Ceiling(out remainder));
-            Assert.AreEqual(expectedRemainder, remainder);
-<#
-        }
-#>
+            Assert.AreEqual(expectedQuotient, ratio.Ceiling(out var addition));
+            Assert.AreEqual(expectedAddition, addition);
         }
 
         AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
         AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)1, <#=TRatio#>.Create(1, 4));
+        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)3, <#=TRatio#>.Create(1, 2));
 <#
         if (IsSigned)
         {
 #>
-        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)1, <#=TRatio#>.Create(-1, 4));
-        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)3, <#=TRatio#>.Create(-1, 2));
         AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(-3, 4));
-        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-2), <#=TRatio#>.Create(-1, 2));
-<#
-        }
-        else // Remainder will be ignored
-        {
-#>
-        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)1, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)3, default(<#=TRatio#>));
+        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(3, 4));
+        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-2), <#=TRatio#>.Create(1, 2));
 <#
         }
 #>
@@ -273,16 +257,14 @@ public class <#=TRatio#>Test
     [TestMethod]
     public void TestFloor()
     {
-        <#=TRatio#> remainder;
-
-        void AssertResult(
+        static void AssertResult(
             <#=TRatio#> ratio,
-            <#=TInt#> expectedQuotient, <#=TRatio#> expectedRemainder)
+            <#=TInt#> expectedQuotient, <#=TRatio#> expectedSubtraction)
         {
             Assert.AreEqual(expectedQuotient, ratio.Floor());
 
-            Assert.AreEqual(expectedQuotient, ratio.Floor(out remainder));
-            Assert.AreEqual(expectedRemainder, remainder);
+            Assert.AreEqual(expectedQuotient, ratio.Floor(out var subtraction));
+            Assert.AreEqual(expectedSubtraction, subtraction);
         }
 
         AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
