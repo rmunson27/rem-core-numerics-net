@@ -45,5 +45,8 @@
     <Compile Update="RatioTest.cs">
       <DependentUpon>RatioTest.tt</DependentUpon>
     </Compile>
+    <Compile Condition=" '$(EnableDefaultCompileItems)' == 'true' " Update="RatioTest.g.cs">
+      <DependentUpon>RatioTest.tt</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>
