@@ -1,8 +1,11 @@
-﻿using System;
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace Rem.Core.Numerics.Test;
 
+/// <summary>
+/// Tests the <see cref="Maths"/> class functionality.
+/// </summary>
+[TestClass]
 public partial class MathsTest
 {
     /// <summary>
