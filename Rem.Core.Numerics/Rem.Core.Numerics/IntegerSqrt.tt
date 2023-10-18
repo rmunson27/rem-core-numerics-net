@@ -59,7 +59,7 @@ public static partial class Maths
         if (isSigned)
         {
 #>
-            case < 0: throw NegativeValue(nameof(n), n);
+            case < 0: throw SqrtOfNegative(nameof(n), n);
 <#
         }
 #>

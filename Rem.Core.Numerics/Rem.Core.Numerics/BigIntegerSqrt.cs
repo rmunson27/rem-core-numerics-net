@@ -18,7 +18,7 @@ public static partial class Maths
     public static BigInteger IntegerSqrt(BigInteger n)
     {
         if (n.IsZero) return 0;
-        if (n < 0) throw NegativeValue(nameof(n), n);
+        if (n < 0) throw SqrtOfNegative(nameof(n), n);
         if (n < 4) return 1;
         if (n < 9) return 2;
         if (n < 16) return 3;
@@ -52,7 +52,7 @@ public static partial class Maths
     public static BigUnsignedInteger IntegerSqrt(BigUnsignedInteger n)
     {
         if (n.IsZero) return 0;
-        if (n < 0) throw NegativeValue(nameof(n), n);
+        if (n < 0) throw SqrtOfNegative(nameof(n), n);
         if (n < 4) return 1;
         if (n < 9) return 2;
         if (n < 16) return 3;
