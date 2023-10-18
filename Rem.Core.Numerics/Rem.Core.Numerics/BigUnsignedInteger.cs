@@ -17,7 +17,8 @@ namespace Rem.Core.Numerics;
 /// a positive sign is necessary, but may be expensive if it must be repeatedly checked.
 /// </remarks>
 public readonly record struct BigUnsignedInteger
-    : IComparable, IComparable<long>, IComparable<ulong>, IComparable<BigInteger>, IComparable<BigUnsignedInteger>
+    : IComparable, IComparable<long>, IComparable<ulong>, IComparable<BigInteger>, IComparable<BigUnsignedInteger>,
+      IFormattable
 #if NET7_0_OR_GREATER
       , IUnsignedNumber<BigUnsignedInteger>, IBinaryInteger<BigUnsignedInteger>
 #endif
@@ -76,7 +77,7 @@ public readonly record struct BigUnsignedInteger
 
     #region Constructor
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private BigUnsignedInteger(BigInteger value) { _value = value; }
+    internal BigUnsignedInteger(BigInteger value) { _value = value; }
     #endregion
 
     #region Comparison
