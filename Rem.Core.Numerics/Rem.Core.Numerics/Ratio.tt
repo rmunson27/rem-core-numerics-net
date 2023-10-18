@@ -266,12 +266,25 @@ public readonly record struct <#=TRatio#>
     public <#=TInt#> Ceiling()
     {
         if (IsWhole) return Numerator;
+<#
+        if (IsSigned)
+        {
+#>
 
         if (Numerator > 0) // Need to fix up the rounding since is truncated
         {
             return <#=FromArithmetic("(Numerator / Denominator + 1)")#>;
         }
         else return <#=FromArithmetic("(Numerator / Denominator)")#>; // Already rounded correctly
+<#
+        }
+        else
+        {
+#>
+        else return <#=FromArithmetic("(Numerator / Denominator + 1)")#>;
+<#
+        }
+#>
     }
 
     /// <summary>
@@ -287,6 +300,10 @@ public readonly record struct <#=TRatio#>
 
         var quotient = <#=Helpers#>.DivRem(Numerator, Denominator, out var arithmeticRem);
 
+<#
+        if (IsSigned)
+        {
+#>
         if (Numerator > 0) // Need to fix up rounding since is truncated
         {
             addition = Create(<#=FromArithmetic("(Denominator - arithmeticRem)")#>, Denominator);
@@ -294,9 +311,19 @@ public readonly record struct <#=TRatio#>
         }
         else // Already rounded correctly
         {
-            addition = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
-            return <#=FromArithmetic("quotient")#>;
+            addition = Create(<#=FromArithmetic("(-arithmeticRem)")#>, Denominator);
+            return <#=FromArithmeticUnchecked("quotient")#>;
         }
+<#
+        }
+        else
+        {
+#>
+        addition = Create(<#=FromArithmetic("(Denominator - arithmeticRem)")#>, Denominator);
+        return <#=FromArithmetic("(quotient + 1)")#>;
+<#
+        }
+#>
     }
 
     /// <summary>
@@ -305,12 +332,25 @@ public readonly record struct <#=TRatio#>
     public <#=TInt#> Floor()
     {
         if (IsWhole) return Numerator;
+<#
+        if (IsSigned)
+        {
+#>
 
         if (Numerator > 0) return <#=FromArithmetic("(Numerator / Denominator)")#>; // Already rounded correctly
         else // Need to fix up rounding since is truncated
         {
             return <#=FromArithmetic("(Numerator / Denominator - 1)")#>;
         }
+<#
+        }
+        else
+        {
+#>
+        return <#=FromArithmetic("(Numerator / Denominator)")#>;
+<#
+        }
+#>
     }
 
     /// <summary>
@@ -326,16 +366,30 @@ public readonly record struct <#=TRatio#>
 
         var quotient = <#=Helpers#>.DivRem(Numerator, Denominator, out var arithmeticRem);
 
+<#
+        if (IsSigned)
+        {
+#>
         if (Numerator > 0) // Already rounded correctly
         {
             subtraction = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
-            return <#=FromArithmetic("quotient")#>;
+            return <#=FromArithmeticUnchecked("quotient")#>;
         }
         else // Need to fix up rounding since is truncated
         {
-            subtraction = Create(<#=FromArithmetic("(arithmeticRem + Denominator)")#>, Denominator);
+            subtraction = Create(<#=FromArithmetic("(Denominator + arithmeticRem)")#>, Denominator);
             return <#=FromArithmetic("(quotient - 1)")#>;
         }
+<#
+        }
+        else
+        {
+#>
+        subtraction = Create(<#=FromArithmetic("arithmeticRem")#>, Denominator);
+        return <#=FromArithmeticUnchecked("quotient")#>;
+<#
+        }
+#>
     }
 
     /// <summary>
