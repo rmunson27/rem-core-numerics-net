@@ -497,8 +497,10 @@ public readonly record struct <#=TRatio#>
             : Try.Failure(out value);
 
 <#
-        if (IsSigned)
+        if (ArithmeticKey is not null)
         {
+            if (IsSigned)
+            {
 #>
     /// <summary>Computes the additive inverse of the given value.</summary>
     public static <#=TRatio#> operator checked -(in <#=TRatio#> value)
@@ -508,7 +510,7 @@ public readonly record struct <#=TRatio#>
     public static <#=TRatio#> operator -(in <#=TRatio#> value)
         => new(<#=FromArithmeticUnchecked("(-value._numerator)")#>, value._denominator);
 <#
-        }
+            }
 #>
 
     /// <summary>Computes the sum of two instances of this type.</summary>
@@ -521,12 +523,12 @@ public readonly record struct <#=TRatio#>
         <#=TArithmetic#> num = num1 + num2;
         <#=Helpers#>.Reduce(ref num, ref denomLCM);
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         <#=Helpers#>.FixUpSign(ref num, ref denomLCM);
 <#
-        }
+            }
 #>
         return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denomLCM")#>);
     }
@@ -537,19 +539,19 @@ public readonly record struct <#=TRatio#>
         if (first.IsZero)
         {
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
             return -second;
 <#
-        }
-        else
-        {
+            }
+            else
+            {
 #>
             if (second.IsZero) return Zero;
             else throw new OverflowException("Cannot subtract nonzero value from zero.");
 <#
-        }
+            }
 #>
         }
         else if (second.IsZero) return first;
@@ -558,12 +560,12 @@ public readonly record struct <#=TRatio#>
         <#=TArithmetic#> num = num1 - num2;
         <#=Helpers#>.Reduce(ref num, ref denomLCM);
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         <#=Helpers#>.FixUpSign(ref num, ref denomLCM);
 <#
-        }
+            }
 #>
         return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denomLCM")#>);
     }
@@ -582,12 +584,12 @@ public readonly record struct <#=TRatio#>
 
         <#=TArithmetic#> num = firstNum * secondNum, denom = firstDenom * secondDenom;
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         <#=Helpers#>.FixUpSign(ref num, ref denom);
 <#
-        }
+            }
 #>
         return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
     }
@@ -607,12 +609,12 @@ public readonly record struct <#=TRatio#>
 
         <#=TArithmetic#> num = firstNum * secondDenom, denom = firstDenom * secondNum;
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         <#=Helpers#>.FixUpSign(ref num, ref denom);
 <#
-        }
+            }
 #>
         return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
     }
@@ -630,16 +632,19 @@ public readonly record struct <#=TRatio#>
         var num = firstLike % secondLike;
         <#=Helpers#>.Reduce(ref num, ref denom);
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         <#=Helpers#>.FixUpSign(ref num, ref denom);
 <#
-        }
+            }
 #>
         
         return new(<#=FromArithmetic("num")#>, <#=FromArithmetic("denom")#>);
     }
+<#
+        } // If has own arithmetic
+#>
     #endregion
 
     #region Equality
