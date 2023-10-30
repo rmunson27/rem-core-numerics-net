@@ -75,6 +75,58 @@ public readonly record struct <#=TRatio#>
     #endregion
 
     #region Properties And Fields
+<#
+        if (IsSigned)
+        {
+#>
+    /// <summary>
+    /// Gets whether or not this instance is positive.
+    /// </summary>
+    public bool IsPositive => Numerator > 0;
+
+    /// <summary>
+    /// Gets whether or not this instance is negative.
+    /// </summary>
+    public bool IsNegative => Numerator < 0;
+
+    /// <summary>
+    /// Gets the sign of this instance.
+    /// </summary>
+    public int Sign
+<#
+            if (Size is null)
+            {
+#>
+        => Numerator.Sign;
+<#
+            }
+            else if (Size is 128)
+            {
+#>
+    {
+        get
+        {
+            if (Numerator > 0) return 1;
+            else if (Numerator == 0) return 0;
+            else return -1;
+        }
+    }
+<#
+            }
+            else
+            {
+#>
+        => Numerator switch
+        {
+            > 0 => 1,
+            0 => 0,
+            < 0 => -1,
+        };
+<#
+            }
+        } // if IsSigned
+#>
+
     /// <summary>Determines whether or not this instance is zero.</summary>
     public bool IsZero => <#=IsZero("_denominator")#>;
 

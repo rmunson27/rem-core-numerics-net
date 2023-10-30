@@ -187,6 +187,24 @@ public class <#=TRatio#>Test
     #endregion
 
     #region Arithmetic
+<#
+        if (IsSigned)
+        {
+#>
+    /// <summary>
+    /// Tests the sign property.
+    /// </summary>
+    [TestMethod]
+    public void TestSign()
+    {
+        Assert.AreEqual(-1, <#=TRatio#>.Create(-3, 4).Sign);
+        Assert.AreEqual(1, <#=TRatio#>.Create(3, 4).Sign);
+        Assert.AreEqual(0, <#=TRatio#>.Zero.Sign);
+    }
+<#
+        }
+#>
+
     /// <summary>
     /// Tests truncation operations.
     /// </summary>
