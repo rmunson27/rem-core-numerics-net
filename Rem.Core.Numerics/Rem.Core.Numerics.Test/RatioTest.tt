@@ -285,6 +285,10 @@ public class <#=TRatio#>Test
 #>
     }
 
+<#
+        if (ArithmeticKey is not null)
+        {
+#>
     /// <summary>
     /// Tests addition operators and other addition functions.
     /// </summary>
@@ -296,13 +300,13 @@ public class <#=TRatio#>Test
         Assert.AreEqual(<#=TRatio#>.Create(1, 5), <#=TRatio#>.Create(1, 5) + default(<#=TRatio#>));
         Assert.AreEqual(<#=TRatio#>.Create(1, 5), default(<#=TRatio#>) + <#=TRatio#>.Create(1, 5));
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         Assert.AreEqual(<#=TRatio#>.Create(5, 12), <#=TRatio#>.Create(1, 2) + <#=TRatio#>.Create(-1, 12));
         Assert.AreEqual(<#=TRatio#>.Create(5, 12), <#=TRatio#>.Create(-1, 12) + <#=TRatio#>.Create(1, 2));
 <#
-        }
+            }
 #>
     }
 
@@ -315,14 +319,14 @@ public class <#=TRatio#>Test
         Assert.AreEqual(<#=TRatio#>.Create(4, 5), <#=TRatio#>.Create(18, 19) - <#=TRatio#>.Create(14, 95));
         Assert.AreEqual(<#=TRatio#>.Create(3, 2), <#=TRatio#>.Create(3, 2) - default(<#=TRatio#>));
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         Assert.AreEqual(<#=TRatio#>.Create(5, 6), <#=TRatio#>.Create(1, 2) - <#=TRatio#>.Create(-1, 3));
         Assert.AreEqual(<#=TRatio#>.Create(-5, 6), <#=TRatio#>.Create(-1, 2) - <#=TRatio#>.Create(1, 3));
         Assert.AreEqual(<#=TRatio#>.Create(-3, 4), default(<#=TRatio#>) - <#=TRatio#>.Create(3, 4));
 <#
-        }
+            }
 #>
     }
 
@@ -339,13 +343,13 @@ public class <#=TRatio#>Test
         Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Create(2, 1) * <#=TRatio#>.Zero);
         Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Zero * <#=TRatio#>.Create(2, 1));
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         Assert.AreEqual(<#=TRatio#>.Create(-5, 4), <#=TRatio#>.NegativeOne * <#=TRatio#>.Create(5, 4));
         Assert.AreEqual(<#=TRatio#>.Create(21, 10), <#=TRatio#>.Create(-3, 2) * <#=TRatio#>.Create(-7, 5));
 <#
-        }
+            }
 #>
     }
 
@@ -362,14 +366,14 @@ public class <#=TRatio#>Test
         Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Zero / <#=TRatio#>.Create(10, 1));
         Assert.ThrowsException<DivideByZeroException>(() => <#=TRatio#>.Create(10, 1) / <#=TRatio#>.Zero);
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         Assert.AreEqual(<#=TRatio#>.Create(-4, 5), <#=TRatio#>.NegativeOne / <#=TRatio#>.Create(5, 4));
         Assert.AreEqual(<#=TRatio#>.Create(-5, 4), <#=TRatio#>.Create(5, 4) / <#=TRatio#>.NegativeOne);
         Assert.AreEqual(<#=TRatio#>.Create(7, 5), <#=TRatio#>.Create(-21, 10) / <#=TRatio#>.Create(-3, 2));
 <#
-        }
+            }
 #>
     }
 
@@ -386,19 +390,19 @@ public class <#=TRatio#>Test
         Assert.AreEqual(<#=TRatio#>.Zero, <#=TRatio#>.Zero % <#=TRatio#>.Create(4, 5));
         Assert.ThrowsException<DivideByZeroException>(() => <#=TRatio#>.Create(4, 5) % <#=TRatio#>.Zero);
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
         Assert.AreEqual(<#=TRatio#>.Create(-1, 6), <#=TRatio#>.Create(-3, 2) % <#=TRatio#>.Create(2, 3));
         Assert.AreEqual(<#=TRatio#>.Create(1, 6), <#=TRatio#>.Create(3, 2) % <#=TRatio#>.Create(-2, 3));
 <#
-        }
+            }
 #>
     }
 
 <#
-        if (IsSigned)
-        {
+            if (IsSigned)
+            {
 #>
     /// <summary>
     /// Tests negation operators and other negation functions.
@@ -410,8 +414,8 @@ public class <#=TRatio#>Test
         Assert.AreEqual(<#=TRatio#>.Create(3, 4), -<#=TRatio#>.Create(-3, 4));
         Assert.AreEqual(<#=TRatio#>.Create(-3, 4), -<#=TRatio#>.Create(3, 4));
 <#
-            if (Size is not null)
-            {
+                if (Size is not null)
+                {
 #>
 
         // Make sure that the min value of the type cannot be negated in checked mode
@@ -424,11 +428,12 @@ public class <#=TRatio#>Test
             Assert.AreEqual(<#=TRatio#>.Create(<#=TInt#>.MinValue, 1), -<#=TRatio#>.Create(<#=TInt#>.MinValue, 1));
         }
 <#
-            }
+                }
 #>
     }
 <#
-        }
+            }
+        } // If has own arithmetic
 #>
     #endregion
 
