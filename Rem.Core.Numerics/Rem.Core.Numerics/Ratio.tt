@@ -255,7 +255,7 @@ public readonly record struct <#=TRatio#>
         // Avoid having to do long division if we have a whole number
         if (<#=IsZero("Denominator")#> || <#=IsOne("Denominator")#>)
         {
-            var numeratorRep = DigitReps.InBase((<#=TArithmetic#>)Numerator, (<#=TArithmetic#>)b);
+            var numeratorRep = DigitReps.InBase((<#=TArithmetic#>)Numerator, <#=ToUnsignedUnchecked("b")#>);
             return new(
                 IsNegative:
 <#
@@ -272,13 +272,13 @@ public readonly record struct <#=TRatio#>
 <#
         }
 #>
-                b,
+                <#=ToUnsignedUnchecked("b")#>,
                 numeratorRep.Digits, DigitList.EmptyFromBaseSize(<#=ToUnsignedUnchecked("b")#>), null);
         }
 
         // Try to avoid storing big integers as digits and remainders if possible, since there could be as many
         // entries as the denominator is large in the worst case
-        var digitListBuilder = DigitList.Builder.NewFromBaseSize(<#=ArithmeticInfo.ToUnsignedUnchecked("b")#>);
+        var digitListBuilder = DigitList.Builder.NewFromBaseSize(<#=ToUnsignedUnchecked("b")#>);
         var remainderMap = RemainderMap.NewFromDenominatorSize(Denominator);
 
 <#
@@ -313,7 +313,7 @@ public readonly record struct <#=TRatio#>
 
             if (<#=ArithmeticInfo.IsZero("remainder")#>) // Reached the end of a terminating expansion
             {
-                return new(isNegative, b, wholeRep, digitListBuilder.ToList(), Repeating: null);
+                return new(isNegative, <#=ToUnsignedUnchecked("b")#>, wholeRep, digitListBuilder.ToList(), Repeating: null);
             }
 
             else if (!remainderMap.AddIfNotExists(remainder, fractionalIndex, out var repeatStartIndex))
@@ -323,7 +323,7 @@ public readonly record struct <#=TRatio#>
                 var digitsSplit = digitListBuilder.ToList().SplitAtIndices(repeatStartIndex);
                 DigitList terminating = digitsSplit[0], repeating = digitsSplit[1];
 
-                return new(isNegative, b, wholeRep, terminating, repeating);
+                return new(isNegative, <#=ToUnsignedUnchecked("b")#>, wholeRep, terminating, repeating);
             }
         }
     }
