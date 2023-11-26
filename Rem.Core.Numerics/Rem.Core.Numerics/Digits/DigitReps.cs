@@ -39,8 +39,9 @@ public static class DigitReps
         uint unsigned;
         if (isNegative) unsigned = n == int.MinValue ? NegativeIntMinValue : unchecked((uint)-n);
         else unsigned = unchecked((uint)n);
+        var unsignedBase = unchecked((uint)Base);
 
-        return new(isNegative, Base, unsigned.GetDigitsInBaseUnchecked(unchecked((uint)Base)));
+        return new(isNegative, unsignedBase, unsigned.GetDigitsInBaseUnchecked(unsignedBase));
     }
 
     /// <summary>
@@ -85,7 +86,8 @@ public static class DigitReps
         if (isNegative) unsigned = n == long.MinValue ? NegativeLongMinValue : unchecked((ulong)-n);
         else unsigned = unchecked((ulong)n);
 
-        return new(isNegative, Base, unsigned.GetDigitsInBaseUnchecked(unchecked((ulong)Base)));
+        var unsignedBase = unchecked((ulong)Base);
+        return new(isNegative, unsignedBase, unsigned.GetDigitsInBaseUnchecked(unsignedBase));
     }
 
     /// <summary>
@@ -113,7 +115,6 @@ public static class DigitReps
     }
     #endregion
     #endregion
-    #endregion
 
     #region Arbitrary Size
     /// <summary>
@@ -131,7 +132,7 @@ public static class DigitReps
         var isNegative = n.Sign < 0;
         if (isNegative) n = -n;
 
-        var baseUnsigned = new BigUnsignedInteger(Base);
+        var baseUnsigned = new BigUnsignedInteger(Base); // Is safe because we already checked the size
 
         var digitListBuilder = DigitList.Builder.NewFromBaseSize(baseUnsigned);
 
@@ -143,7 +144,7 @@ public static class DigitReps
         }
         digitListBuilder.Reverse();
 
-        return new(isNegative, Base, digitListBuilder.ToList());
+        return new(isNegative, baseUnsigned, digitListBuilder.ToList());
     }
 
     /// <summary>
@@ -170,6 +171,7 @@ public static class DigitReps
 
         return new(Base, digitListBuilder.ToList());
     }
+    #endregion
     #endregion
     #endregion
 }

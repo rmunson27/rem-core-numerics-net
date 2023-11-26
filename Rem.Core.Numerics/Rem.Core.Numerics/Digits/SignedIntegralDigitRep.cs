@@ -16,7 +16,7 @@ public sealed record class SignedIntegralDigitRep
     /// <summary>
     /// Gets the base of the representation.
     /// </summary>
-    [GreaterThanOrEqualToInteger(2)] public BigInteger Base { get; }
+    [GreaterThanOrEqualToInteger(2)] public BigUnsignedInteger Base { get; }
 
     /// <summary>
     /// Gets the sign of the value represented by this instance.
@@ -41,7 +41,7 @@ public sealed record class SignedIntegralDigitRep
     /// <param name="Base"></param>
     /// <param name="Digits"></param>
     internal SignedIntegralDigitRep(
-        bool IsNegative, [GreaterThanOrEqualToInteger(2)] BigInteger Base, DigitList Digits)
+        bool IsNegative, [GreaterThanOrEqualToInteger(2)] BigUnsignedInteger Base, DigitList Digits)
     {
         this.IsNegative = IsNegative;
         this.Digits = Digits;
@@ -49,7 +49,7 @@ public sealed record class SignedIntegralDigitRep
     }
 
     /// <summary>
-    /// Creates a new <see cref="SignedIntegralDigitRep"/> with the negative sign, base and digits passed in.
+    /// Creates a new <see cref="SignedIntegralDigitRep"/> with the negative flag, base and digits passed in.
     /// </summary>
     /// <remarks>
     /// Leading zeroes will be stripped off of the digit list before creation.
@@ -64,7 +64,7 @@ public sealed record class SignedIntegralDigitRep
     /// <exception cref="ArgumentNullException"><paramref name="Digits"/> was <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="Base"/> was less than 2.</exception>
     public static SignedIntegralDigitRep Create(
-        bool IsNegative, [GreaterThanOrEqualToInteger(2)] BigInteger Base, DigitList Digits)
+        bool IsNegative, [GreaterThanOrEqualToInteger(2)] BigUnsignedInteger Base, DigitList Digits)
     {
         Throw.IfArgLessThan(2, Base, nameof(Base));
         Digits = Throw.IfArgNull(Digits, nameof(Digits)).WithoutLeadingZeroes();

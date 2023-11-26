@@ -16,7 +16,7 @@ public sealed record class UnsignedIntegralDigitRep
     /// <summary>
     /// Gets the base of the representation.
     /// </summary>
-    [GreaterThanOrEqualToInteger(2)] public BigInteger Base { get; }
+    [GreaterThanOrEqualToInteger(2)] public BigUnsignedInteger Base { get; }
 
     /// <summary>
     /// Gets the digits of the representation, with no leading zeroes.
@@ -27,7 +27,7 @@ public sealed record class UnsignedIntegralDigitRep
     /// Constructs a new instance of the <see cref="UnsignedIntegralDigitRep"/> class with the digits of
     /// the representation.
     /// </summary>
-    internal UnsignedIntegralDigitRep(BigInteger Base, DigitList Digits)
+    internal UnsignedIntegralDigitRep(BigUnsignedInteger Base, DigitList Digits)
     {
         this.Base = Base;
         this.Digits = Digits;
@@ -44,7 +44,8 @@ public sealed record class UnsignedIntegralDigitRep
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"><paramref name="Digits"/> was <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="Base"/> was less than 2.</exception>
-    public static UnsignedIntegralDigitRep Create([GreaterThanOrEqualToInteger(2)] BigInteger Base, DigitList Digits)
+    public static UnsignedIntegralDigitRep Create(
+        [GreaterThanOrEqualToInteger(2)] BigUnsignedInteger Base, DigitList Digits)
     {
         Throw.IfArgLessThan(2, Base, nameof(Base));
         Digits = Throw.IfArgNull(Digits, nameof(Digits)).WithoutLeadingZeroes();
@@ -56,7 +57,7 @@ public sealed record class UnsignedIntegralDigitRep
     /// </summary>
     /// <param name="Base"></param>
     /// <param name="Digits"></param>
-    public void Deconstruct([GreaterThanOrEqualToInteger(2)] out BigInteger Base, out DigitList Digits)
+    public void Deconstruct([GreaterThanOrEqualToInteger(2)] out BigUnsignedInteger Base, out DigitList Digits)
     {
         Base = this.Base;
         Digits = this.Digits;
