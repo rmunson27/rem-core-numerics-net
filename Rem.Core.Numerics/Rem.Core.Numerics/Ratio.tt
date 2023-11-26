@@ -382,12 +382,381 @@ public readonly record struct <#=TRatio#>
     #endregion
 
     #region Arithmetic
+    /// <summary>Rounds this instance to a whole number using the specified rounding strategy.</summary>
+    /// <param name="strategy">
+    /// The rounding strategy to use to round this instance, or <see langword="null"/> to use
+    /// <see cref="ToNearestRoundingStrategy.AwayFromZero"/>.
+    /// </param>
+    public <#=TInt#> Round(RoundingStrategy? strategy = null)
+    {
+        var nonNullStrategy = strategy ?? ToNearestRoundingStrategy.AwayFromZero;
+        
+        if (IsWhole) return Numerator; // No rounding necessary
+
+        if (nonNullStrategy.TryGetDirected(out var directedStrategy, out var toNearestStrategy))
+        {
+            return directedStrategy.Label switch
+            {
+                DirectedRoundingStrategy.Labels.ToZero => TruncateNonWhole(),
+                DirectedRoundingStrategy.Labels.AwayFromZero => RoundAwayFromZeroNonWhole(),
+                DirectedRoundingStrategy.Labels.ToPositiveInfinity => CeilingNonWhole(),
+                _ => FloorNonWhole(), // ToNegativeInfinity
+            };
+        }
+        else
+        {
+            return toNearestStrategy.Label switch
+            {
+                ToNearestRoundingStrategy.Labels.ToZero => RoundToNearestThenToZeroNonWhole(),
+                ToNearestRoundingStrategy.Labels.AwayFromZero => RoundToNearestThenAwayFromZeroNonWhole(),
+                ToNearestRoundingStrategy.Labels.ToPositiveInfinity => RoundToNearestThenToPositiveInfinityNonWhole(),
+                ToNearestRoundingStrategy.Labels.ToNegativeInfinity => RoundToNearestThenToNegativeInfinityNonWhole(),
+                ToNearestRoundingStrategy.Labels.ToEven => RoundToNearestThenToParityNonWhole(Parity.Even),
+                _ => RoundToNearestThenToParityNonWhole(Parity.Odd), // ToOdd
+            };
+        }
+    }
+
+    /// <summary>
+    /// Rounds this instance to the nearest whole number, resolving midpoints by rounding towards negative infinity.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenToNegativeInfinity()
+    {
+        if (IsWhole) return Numerator;
+        else return RoundToNearestThenToNegativeInfinityNonWhole();
+    }
+
+    private <#=TInt#> RoundToNearestThenToNegativeInfinityNonWhole()
+    {
+<#
+        if (IsSigned)
+        {
+#>
+        var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+        if (Numerator < 0)
+        {
+            var denomOver2 = <#=Helpers#>.DivRem(Denominator, 2, out var denomMod2);
+            var denomIsEven = <#=IsZero("denomMod2")#>;
+
+            if (denomIsEven)
+            {
+                if (-rem >= denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+            else
+            {
+                if (-rem > denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+        }
+        else
+        {
+            var denomOver2 = Denominator / 2;
+
+            if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+<#
+        }
+        else
+        {
+#>
+        var denomOver2 = Denominator / 2;
+        var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+        if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+        else return <#=FromArithmeticUnchecked("div")#>;
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Rounds this instance to the nearest whole number, resolving midpoints by rounding towards positive infinity.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenToPositiveInfinity()
+    {
+        if (IsWhole) return Numerator;
+        else return RoundToNearestThenToPositiveInfinityNonWhole();
+    }
+
+    private <#=TInt#> RoundToNearestThenToPositiveInfinityNonWhole()
+    {
+<#
+        if (IsSigned)
+        {
+#>
+        if (Numerator < 0)
+        {
+            var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+            var denomOver2 = Denominator / 2;
+
+            if (-rem > denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+        else
+        {
+            var denomOver2 = <#=Helpers#>.DivRem(Denominator, 2, out var denomMod2);
+            var denomIsEven = <#=IsZero("denomMod2")#>;
+            var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+            if (denomIsEven)
+            {
+                if (rem >= denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+            else
+            {
+                if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+        }
+<#
+        }
+        else
+        {
+#>
+        var denomOver2 = <#=Helpers#>.DivRem(Denominator, 2, out var denomMod2);
+        var denomIsEven = <#=IsZero("denomMod2")#>;
+        var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+        if (denomIsEven)
+        {
+            if (rem >= denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+        else
+        {
+            if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+<#
+        }
+#>
+    }
+
+    /// <summary>
+    /// Rounds this instance to the nearest whole number, resolving midpoints by rounding away from zero.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenAwayFromZero()
+    {
+        if (IsWhole) return Numerator;
+        else return RoundToNearestThenAwayFromZeroNonWhole();
+    }
+
+    private <#=TInt#> RoundToNearestThenAwayFromZeroNonWhole()
+    {
+        var denomOver2 = <#=Helpers#>.DivRem(Denominator, 2, out var denomMod2);
+        var denomIsEven = <#=IsZero("denomMod2")#>;
+        var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+<#
+        if (IsSigned)
+        {
+#>
+        if (Numerator < 0)
+        {
+            if (denomIsEven)
+            {
+                if (-rem >= denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+            else
+            {
+                if (-rem > denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+        }
+
+<#
+        }
+
+#>
+        if (denomIsEven)
+        {
+            if (rem >= denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+        else
+        {
+            if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+    }
+
+    /// <summary>
+    /// Rounds this instance to the nearest whole number, resolving midpoints by rounding towards zero.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenToZero()
+    {
+        if (IsWhole) return Numerator;
+        else return RoundToNearestThenToZeroNonWhole();
+    }
+
+    private <#=TInt#> RoundToNearestThenToZeroNonWhole()
+    {
+        var denomOver2 = Denominator / 2;
+        var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+<#
+        if (IsSigned)
+        {
+#>
+        if (Numerator < 0)
+        {
+            if (-rem > denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+
+<#
+        }
+#>
+        if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+        else return <#=FromArithmeticUnchecked("div")#>;
+    }
+
+    /// <summary>
+    /// Rounds this ratio to the nearest whole number, resolving midpoints by rounding to the nearest even number.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenToEven() => RoundToNearestThenToParity(Parity.Even);
+
+    /// <summary>
+    /// Rounds this ratio to the nearest whole number, resolving midpoints by rounding to the nearest odd number.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenToOdd() => RoundToNearestThenToParity(Parity.Odd);
+
+    /// <summary>
+    /// Rounds this ratio to the nearest whole number, resolving midpoints by rounding to the nearest whole number with
+    /// the given parity.
+    /// </summary>
+    public <#=TInt#> RoundToNearestThenToParity(Parity parity)
+    {
+        if (IsWhole) return Numerator;
+        else return RoundToNearestThenToParityNonWhole(parity);
+    }
+
+    private <#=TInt#> RoundToNearestThenToParityNonWhole(Parity parity)
+    {
+        var denomOver2 = <#=Helpers#>.DivRem(Denominator, 2, out var denomMod2);
+        var denomIsOdd = denomMod2 != 0;
+        var div = <#=Helpers#>.DivRem(Numerator, Denominator, out var rem);
+
+<#
+        if (IsSigned)
+        {
+#>
+        if (Numerator < 0)
+        {
+            if (denomIsOdd) // No midpoint
+            {
+                if (-rem > denomOver2) return <#=FromArithmetic("(div - 1)")#>; // Was truncated upwards
+                else return <#=FromArithmeticUnchecked("div")#>;
+            }
+            else
+            {
+                return (-rem).CompareTo(denomOver2) switch
+                {
+                    > 0 => <#=FromArithmetic("(div - 1)")#>, // Was truncated upwards
+                    0 => parity.IsParityOf(div) ? <#=FromArithmeticUnchecked("div")#> : <#=FromArithmetic("(div - 1)")#>,
+                    _ => <#=FromArithmeticUnchecked("div")#>,
+                };
+            }
+        }
+
+<#
+        }
+#>
+        if (denomIsOdd) // No midpoint
+        {
+            if (rem > denomOver2) return <#=FromArithmetic("(div + 1)")#>; // Was truncated downwards
+            else return <#=FromArithmeticUnchecked("div")#>;
+        }
+        else
+        {
+            return rem.CompareTo(denomOver2) switch
+            {
+                > 0 => <#=FromArithmetic("(div + 1)")#>, // Was truncated downwards
+                0 => parity.IsParityOf(div) ? <#=FromArithmeticUnchecked("div")#> : <#=FromArithmetic("(div + 1)")#>,
+                _ => <#=FromArithmeticUnchecked("div")#>,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Rounds this instance to the nearest whole number farther away from zero.
+    /// </summary>
+    public <#=TInt#> RoundAwayFromZero()
+    {
+        if (IsWhole) return Numerator;
+        else return RoundAwayFromZeroNonWhole();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private <#=TInt#> RoundAwayFromZeroNonWhole()
+    {
+        var div = Numerator / Denominator;
+<#
+        if (IsSigned)
+        {
+#>
+        if (Numerator < 0) return <#=FromArithmetic("(div - 1)")#>;
+<#
+        }
+#>
+        return <#=FromArithmetic("(div + 1)")#>;
+    }
+
+    /// <summary>
+    /// Rounds this instance away from zero, returning the amount added in an <see langword="out"/> parameter.
+    /// </summary>
+    public <#=TInt#> RoundAwayFromZero(out <#=TRatio#> addition)
+    {
+        if (IsWhole)
+        {
+            addition = <#=TRatio#>.Zero;
+            return Numerator;
+        }
+
+        var quotient = <#=Helpers#>.DivRem(Numerator, Denominator, out var arithmeticRem);
+<#
+        if (IsSigned)
+        {
+#>
+        if (Numerator < 0) quotient--;
+        else quotient++;
+
+        if (Numerator < 0)
+        {
+            addition = <#=TRatio#>.Create(<#=FromArithmetic("(-Denominator - arithmeticRem)")#>, Denominator);
+        }
+        else
+        {
+            addition = <#=TRatio#>.Create(<#=FromArithmeticUnchecked("(Denominator - arithmeticRem)")#>, Denominator);
+        }
+
+<#
+        }
+        else
+        {
+#>
+        addition = <#=TRatio#>.Create(<#=FromArithmeticUnchecked("(Denominator - arithmeticRem)")#>, Denominator);
+        quotient++;
+<#
+        }
+#>
+        return <#=FromArithmetic("quotient")#>;
+    }
+
     /// <summary>Computes the truncation of this instance.</summary>
     public <#=TInt#> Truncate()
     {
         if (IsWhole) return Numerator;
-        else return <#=FromArithmetic("(Numerator / Denominator)")#>;
+        else return TruncateNonWhole();
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private <#=TInt#> TruncateNonWhole() => <#=FromArithmetic("(Numerator / Denominator)")#>;
 
     /// <summary>
     /// Computes the truncation of this instance, returning the remainder in an <see langword="out"/> parameter.
@@ -412,6 +781,12 @@ public readonly record struct <#=TRatio#>
     public <#=TInt#> Ceiling()
     {
         if (IsWhole) return Numerator;
+        else return CeilingNonWhole();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private <#=TInt#> CeilingNonWhole()
+    {
 <#
         if (IsSigned)
         {
@@ -427,7 +802,7 @@ public readonly record struct <#=TRatio#>
         else
         {
 #>
-        else return <#=FromArithmetic("(Numerator / Denominator + 1)")#>;
+        return <#=FromArithmetic("(Numerator / Denominator + 1)")#>;
 <#
         }
 #>
@@ -478,6 +853,12 @@ public readonly record struct <#=TRatio#>
     public <#=TInt#> Floor()
     {
         if (IsWhole) return Numerator;
+        else return FloorNonWhole();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private <#=TInt#> FloorNonWhole()
+    {
 <#
         if (IsSigned)
         {
@@ -949,7 +1330,7 @@ file static class <#=Helpers#>
         (null, true), (null, false),
     };
 
-    Dictionary<
+    readonly Dictionary<
         (int? Size, bool IsSigned),
         (string TInt, string TIntQualified,
          string TRatio,

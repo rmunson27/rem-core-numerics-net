@@ -6,7 +6,9 @@
 <#@ import namespace="System.Collections.Generic" #>
 using Rem.Core.Numerics.Digits;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Rem.Core.Numerics.Test.Ratio;
 
@@ -201,9 +203,58 @@ public class <#=TRatio#>Test
         Assert.AreEqual(1, <#=TRatio#>.Create(3, 4).Sign);
         Assert.AreEqual(0, <#=TRatio#>.Zero.Sign);
     }
+
 <#
         }
 #>
+    #region Rounding
+    private static readonly ImmutableArray<(
+        <#=TRatio#> Ratio,
+        <#=TInt#> Truncate, <#=TRatio#> TruncateRemainder,
+        <#=TInt#> AwayFromZero, <#=TRatio#> AwayFromZeroAddition,
+        <#=TInt#> Ceiling, <#=TRatio#> CeilingAddition,
+        <#=TInt#> Floor, <#=TRatio#> FloorSubtraction,
+        <#=TInt#> ToNearestThenToNegativeInfinity,
+        <#=TInt#> ToNearestThenToPositiveInfinity,
+        <#=TInt#> ToNearestThenToZero,
+        <#=TInt#> ToNearestThenAwayFromZero,
+        <#=TInt#> ToNearestThenToEven,
+        <#=TInt#> ToNearestThenToOdd)> RoundingTests = new (
+            <#=TRatio#>,
+            <#=TInt#>, <#=TRatio#>,
+            <#=TInt#>, <#=TRatio#>,
+            <#=TInt#>, <#=TRatio#>,
+            <#=TInt#>, <#=TRatio#>,
+            <#=TInt#>,
+            <#=TInt#>,
+            <#=TInt#>,
+            <#=TInt#>,
+            <#=TInt#>,
+            <#=TInt#>)[]
+        {
+            (Create(0, 1), 0, default, 0, default, 0, default, 0, default, 0, 0, 0, 0, 0, 0),
+            (Create(1, 1), 1, default, 1, default, 1, default, 1, default, 1, 1, 1, 1, 1, 1),
+            (Create(2, 1), 2, default, 2, default, 2, default, 2, default, 2, 2, 2, 2, 2, 2),
+            (Create(3, 4), 0, Create(3, 4), 1, Create(1, 4), 1, Create(1, 4), 0, Create(3, 4), 1, 1, 1, 1, 1, 1),
+            (Create(5, 2), 2, Create(1, 2), 3, Create(1, 2), 3, Create(1, 2), 2, Create(1, 2), 2, 3, 2, 3, 2, 3),
+            (Create(3, 2), 1, Create(1, 2), 2, Create(1, 2), 2, Create(1, 2), 1, Create(1, 2), 1, 2, 1, 2, 2, 1),
+            (Create(7, 3), 2, Create(1, 3), 3, Create(2, 3), 3, Create(2, 3), 2, Create(1, 3), 2, 2, 2, 2, 2, 2),
+            (Create(8, 3), 2, Create(2, 3), 3, Create(1, 3), 3, Create(1, 3), 2, Create(2, 3), 3, 3, 3, 3, 3, 3),
+<#
+        if (IsSigned)
+        {
+#>
+            (Create(-1, 1), -1, default, -1, default, -1, default, -1, default, -1, -1, -1, -1, -1, -1),
+            (Create(-2, 1), -2, default, -2, default, -2, default, -2, default, -2, -2, -2, -2, -2, -2),
+            (Create(-3, 4), 0, Create(-3, 4), -1, Create(-1, 4), 0, Create(3, 4), -1, Create(1, 4), -1, -1, -1, -1, -1, -1),
+            (Create(-5, 2), -2, Create(-1, 2), -3, Create(-1, 2), -2, Create(1, 2), -3, Create(1, 2), -3, -2, -2, -3, -2, -3),
+            (Create(-3, 2), -1, Create(-1, 2), -2, Create(-1, 2), -1, Create(1, 2), -2, Create(1, 2), -2, -1, -1, -2, -2, -1),
+            (Create(-7, 3), -2, Create(-1, 3), -3, Create(-2, 3), -2, Create(1, 3), -3, Create(2, 3), -2, -2, -2, -2, -2, -2),
+            (Create(-8, 3), -2, Create(-2, 3), -3, Create(-1, 3), -2, Create(2, 3), -3, Create(1, 3), -3, -3, -3, -3, -3, -3),
+<#
+        }
+#>
+        }.ToImmutableArray();
 
     /// <summary>
     /// Tests truncation operations.
@@ -211,32 +262,14 @@ public class <#=TRatio#>Test
     [TestMethod]
     public void TestTruncate()
     {
-        <#=TRatio#> remainder;
-
-        void AssertResult(
-            <#=TRatio#> ratio,
-            <#=TInt#> expectedQuotient, <#=TRatio#> expectedRemainder)
+        foreach (var t in RoundingTests)
         {
-            Assert.AreEqual(expectedQuotient, ratio.Truncate());
+            var message = $"Ratio: {t.Ratio}";
+            Assert.AreEqual(t.Truncate, t.Ratio.Truncate(), message);
 
-            Assert.AreEqual(expectedQuotient, ratio.Truncate(out remainder));
-            Assert.AreEqual(expectedRemainder, remainder);
+            Assert.AreEqual(t.Truncate, t.Ratio.Truncate(out var actualRemainder), message);
+            Assert.AreEqual(t.TruncateRemainder, actualRemainder, message);
         }
-
-        AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(3, 4));
-        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)2, <#=TRatio#>.Create(1, 2));
-<#
-        if (IsSigned)
-        {
-#>
-        AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(-3, 4));
-        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-2), <#=TRatio#>.Create(-1, 2));
-<#
-        }
-#>
     }
 
     /// <summary>
@@ -245,30 +278,14 @@ public class <#=TRatio#>Test
     [TestMethod]
     public void TestCeiling()
     {
-        static void AssertResult(
-            <#=TRatio#> ratio,
-            <#=TInt#> expectedQuotient, <#=TRatio#> expectedAddition)
+        foreach (var t in RoundingTests)
         {
-            Assert.AreEqual(expectedQuotient, ratio.Ceiling());
+            var message = $"Ratio: {t.Ratio}";
+            Assert.AreEqual(t.Ceiling, t.Ratio.Ceiling(), message);
 
-            Assert.AreEqual(expectedQuotient, ratio.Ceiling(out var addition));
-            Assert.AreEqual(expectedAddition, addition);
+            Assert.AreEqual(t.Ceiling, t.Ratio.Ceiling(out var actualAddition), message);
+            Assert.AreEqual(t.CeilingAddition, actualAddition, message);
         }
-
-        AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)1, <#=TRatio#>.Create(1, 4));
-        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)3, <#=TRatio#>.Create(1, 2));
-<#
-        if (IsSigned)
-        {
-#>
-        AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(3, 4));
-        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-2), <#=TRatio#>.Create(1, 2));
-<#
-        }
-#>
     }
 
     /// <summary>
@@ -277,31 +294,135 @@ public class <#=TRatio#>Test
     [TestMethod]
     public void TestFloor()
     {
-        static void AssertResult(
-            <#=TRatio#> ratio,
-            <#=TInt#> expectedQuotient, <#=TRatio#> expectedSubtraction)
+        foreach (var t in RoundingTests)
         {
-            Assert.AreEqual(expectedQuotient, ratio.Floor());
+            var message = $"Ratio: {t.Ratio}";
+            Assert.AreEqual(t.Floor, t.Ratio.Floor(), message);
 
-            Assert.AreEqual(expectedQuotient, ratio.Floor(out var subtraction));
-            Assert.AreEqual(expectedSubtraction, subtraction);
+            Assert.AreEqual(t.Floor, t.Ratio.Floor(out var actualSubtraction), message);
+            Assert.AreEqual(t.FloorSubtraction, actualSubtraction, message);
         }
-
-        AssertResult(<#=TRatio#>.Create(0, 1), (<#=TInt#>)0, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(2, 1), (<#=TInt#>)2, default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(3, 4), (<#=TInt#>)0, <#=TRatio#>.Create(3, 4));
-        AssertResult(<#=TRatio#>.Create(5, 2), (<#=TInt#>)2, <#=TRatio#>.Create(1, 2));
-<#
-        if (IsSigned)
-        {
-#>
-        AssertResult(<#=TRatio#>.Create(-2, 1), (<#=TInt#>)(-2), default(<#=TRatio#>));
-        AssertResult(<#=TRatio#>.Create(-3, 4), (<#=TInt#>)(-1), <#=TRatio#>.Create(1, 4));
-        AssertResult(<#=TRatio#>.Create(-5, 2), (<#=TInt#>)(-3), <#=TRatio#>.Create(1, 2));
-<#
-        }
-#>
     }
+
+    /// <summary>
+    /// Tests away-from-zero rounding operations.
+    /// </summary>
+    [TestMethod]
+    public void TestRoundAwayFromZero()
+    {
+        foreach (var t in RoundingTests)
+        {
+            var message = $"Ratio: {t.Ratio}";
+            Assert.AreEqual(t.AwayFromZero, t.Ratio.RoundAwayFromZero(), message);
+
+            Assert.AreEqual(t.AwayFromZero, t.Ratio.RoundAwayFromZero(out var actualAddition), message);
+            Assert.AreEqual(t.AwayFromZeroAddition, actualAddition, message);
+        }
+    }
+
+    /// <summary>
+    /// Tests rounding to the nearest whole number then to negative infinity.
+    /// </summary>
+    [TestMethod]
+    public void TestRoundToNearestThenToNegativeInfinity()
+    {
+        foreach (var t in RoundingTests)
+        {
+            Assert.AreEqual(
+                t.ToNearestThenToNegativeInfinity, t.Ratio.RoundToNearestThenToNegativeInfinity(),
+                $"Ratio: {t.Ratio}");
+        }
+    }
+
+    /// <summary>
+    /// Tests rounding to the nearest whole number then to positive infinity.
+    /// </summary>
+    [TestMethod]
+    public void TestRoundToNearestThenToPositiveInfinity()
+    {
+        foreach (var t in RoundingTests)
+        {
+            Assert.AreEqual(
+                t.ToNearestThenToPositiveInfinity, t.Ratio.RoundToNearestThenToPositiveInfinity(),
+                $"Ratio: {t.Ratio}");
+        }
+    }
+
+    /// <summary>
+    /// Tests rounding to the nearest whole number then to zero.
+    /// </summary>
+    [TestMethod]
+    public void TestRoundToNearestThenToZero()
+    {
+        foreach (var t in RoundingTests)
+        {
+            Assert.AreEqual(
+                t.ToNearestThenToZero, t.Ratio.RoundToNearestThenToZero(),
+                $"Ratio: {t.Ratio}");
+        }
+    }
+
+    /// <summary>
+    /// Tests rounding to the nearest whole number then away from zero.
+    /// </summary>
+    [TestMethod]
+    public void TestRoundToNearestThenAwayFromZero()
+    {
+        foreach (var t in RoundingTests)
+        {
+            Assert.AreEqual(
+                t.ToNearestThenAwayFromZero, t.Ratio.RoundToNearestThenAwayFromZero(),
+                $"Ratio: {t.Ratio}");
+        }
+    }
+
+    /// <summary>
+    /// Tests rounding to the nearest whole number then towards the nearest whole number with a specified parity.
+    /// </summary>
+    [TestMethod]
+    public void TestRoundToNearestThenToParity()
+    {
+        foreach (var t in RoundingTests)
+        {
+            Assert.AreEqual(
+                t.ToNearestThenToEven, t.Ratio.RoundToNearestThenToParity(Parity.Even),
+                $"Ratio: {t.Ratio}");
+
+            Assert.AreEqual(
+                t.ToNearestThenToOdd, t.Ratio.RoundToNearestThenToParity(Parity.Odd),
+                $"Ratio: {t.Ratio}");
+        }
+    }
+
+    /// <summary>
+    /// Tests general rounding operations.
+    /// </summary>
+    [TestMethod]
+    public void TestRound()
+    {
+        foreach (var t in RoundingTests)
+        {
+            var message = $"Ratio: {t.Ratio}";
+
+            Assert.AreEqual(t.ToNearestThenAwayFromZero, t.Ratio.Round(), message); // Test default rounding strategy
+            Assert.AreEqual(t.Truncate, t.Ratio.Round(RoundingStrategy.ToZero), message);
+            Assert.AreEqual(t.AwayFromZero, t.Ratio.Round(RoundingStrategy.AwayFromZero), message);
+            Assert.AreEqual(t.Ceiling, t.Ratio.Round(RoundingStrategy.ToPositiveInfinity), message);
+            Assert.AreEqual(t.Floor, t.Ratio.Round(RoundingStrategy.ToNegativeInfinity), message);
+            Assert.AreEqual(t.ToNearestThenToEven, t.Ratio.Round(RoundingStrategy.ToNearestThenToEven), message);
+            Assert.AreEqual(t.ToNearestThenToOdd, t.Ratio.Round(RoundingStrategy.ToNearestThenToOdd), message);
+            Assert.AreEqual(t.ToNearestThenToZero, t.Ratio.Round(RoundingStrategy.ToNearestThenToZero), message);
+            Assert.AreEqual(
+                t.ToNearestThenAwayFromZero, t.Ratio.Round(RoundingStrategy.ToNearestThenAwayFromZero), message);
+            Assert.AreEqual(
+                t.ToNearestThenToNegativeInfinity, t.Ratio.Round(RoundingStrategy.ToNearestThenToNegativeInfinity),
+                message);
+            Assert.AreEqual(
+                t.ToNearestThenToPositiveInfinity, t.Ratio.Round(RoundingStrategy.ToNearestThenToPositiveInfinity),
+                message);
+        }
+    }
+    #endregion
 
 <#
         if (ArithmeticKey is not null)
@@ -525,6 +646,12 @@ public class <#=TRatio#>Test
         }
     }
     #endregion
+    #endregion
+
+    #region Helpers
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static <#=TRatio#> Create(<#=TInt#> Numerator, <#=TInt#> Denominator)
+        => <#=TRatio#>.Create(Numerator, Denominator);
     #endregion
 }
 
