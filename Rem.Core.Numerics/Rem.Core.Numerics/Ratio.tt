@@ -382,6 +382,7 @@ public readonly record struct <#=TRatio#>
     #endregion
 
     #region Arithmetic
+    #region Rounding
     /// <summary>Rounds this instance to a whole number using the specified rounding strategy.</summary>
     /// <param name="strategy">
     /// The rounding strategy to use to round this instance, or <see langword="null"/> to use
@@ -918,6 +919,7 @@ public readonly record struct <#=TRatio#>
         }
 #>
     }
+    #endregion
 
     /// <summary>
     /// Gets a whole number equivalent to this value in an <see langword="out"/> parameter if possible.
